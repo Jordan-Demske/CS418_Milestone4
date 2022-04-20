@@ -1,0 +1,113 @@
+DROP DATABASE IF EXISTS `Milestone4`;
+
+CREATE DATABASE IF NOT EXISTS `Milestone4`;
+
+USE `Milestone4`;
+
+DROP TABLE IF EXISTS `VESSEL`;
+CREATE TABLE `VESSEL` (
+  `IMO` mediumint unsigned NOT NULL,
+  `Flag` varchar(40) DEFAULT NULL,
+  `Name` varchar(40) DEFAULT NULL,
+  `Built` smallint DEFAULT NULL,
+  `CallSign` varchar(8) DEFAULT NULL,
+  `Length` smallint DEFAULT NULL,
+  `Breadth` smallint DEFAULT NULL,
+  `Tonnage` mediumint DEFAULT NULL,
+  `MMSI` int DEFAULT NULL,
+  `Type` varchar(30) DEFAULT NULL,
+  `Status` varchar(40) DEFAULT NULL,
+  `Owner` varchar(80) DEFAULT NULL,
+  PRIMARY KEY (`IMO`)
+);
+
+DROP TABLE IF EXISTS `MAP_VIEW`;
+CREATE TABLE `MAP_VIEW` (
+  `Id` mediumint NOT NULL,
+  `Name` varchar(10) DEFAULT NULL,
+  `LongitudeW` decimal(9,6) DEFAULT NULL,
+  `LatitudeS` decimal(8,6) DEFAULT NULL,
+  `LongitudeE` decimal(9,6) DEFAULT NULL,
+  `LatitudeN` decimal(8,6) DEFAULT NULL,
+  `Scale` enum('1','2','3') DEFAULT NULL,
+  `RasterFile` varchar(100) DEFAULT NULL,
+  `ImageWidth` smallint DEFAULT NULL,
+  `ImageHeight` smallint DEFAULT NULL,
+  `ActualLongitudeW` decimal(9,6) DEFAULT NULL,
+  `ActualLatitudeS` decimal(8,6) DEFAULT NULL,
+  `ActualLongitudeE` decimal(9,6) DEFAULT NULL,
+  `ActualLatitudeN` decimal(8,6) DEFAULT NULL,
+  `ContainerMapView_Id` mediumint DEFAULT NULL,
+  PRIMARY KEY (`Id`),
+  FOREIGN KEY (`ContainerMapView_Id`) REFERENCES `MAP_VIEW`(`Id`)
+);
+
+DROP TABLE IF EXISTS `AIS_MESSAGE`;
+CREATE TABLE `AIS_MESSAGE` (
+  `Id` mediumint unsigned NOT NULL,
+  `Timestamp` datetime DEFAULT NULL,
+  `MMSI` int DEFAULT NULL,
+  `Class` enum('Class A','Class B','AtoN','Base Station','SAR Airborne','Search and Rescue Transponder','Man Overboard Device') DEFAULT NULL,
+  `Vessel_IMO` mediumint unsigned DEFAULT NULL,
+  PRIMARY KEY (`Id`),
+  FOREIGN KEY (`Vessel_IMO`) REFERENCES `VESSEL`(`IMO`)
+);
+
+DROP TABLE IF EXISTS `PORT`;
+CREATE TABLE `PORT` (
+  `Id` smallint NOT NULL,
+  `LoCode` char(5) DEFAULT NULL,
+  `Name` varchar(30) DEFAULT NULL,
+  `Country` varchar(80) DEFAULT NULL,
+  `Longitude` decimal(9,6) DEFAULT NULL,
+  `Latitude` decimal(8,6) DEFAULT NULL,
+  `Website` varchar(120) DEFAULT NULL,
+  `MapView1_Id` mediumint DEFAULT NULL,
+  `MapView2_Id` mediumint DEFAULT NULL,
+  `MapView3_Id` mediumint DEFAULT NULL,
+  PRIMARY KEY (`Id`),
+  FOREIGN KEY (`MapView1_Id`) REFERENCES `MAP_VIEW`(`Id`),
+  FOREIGN KEY (`MapView2_Id`) REFERENCES `MAP_VIEW`(`Id`),
+  FOREIGN KEY (`MapView3_Id`) REFERENCES `MAP_VIEW`(`Id`)
+);
+
+DROP TABLE IF EXISTS `STATIC_DATA`;
+CREATE TABLE `STATIC_DATA` (
+  `AISMessage_Id` mediumint unsigned NOT NULL,
+  `AISIMO` int DEFAULT NULL,
+  `CallSign` varchar(8) DEFAULT NULL,
+  `Name` varchar(30) DEFAULT NULL,
+  `VesselType` varchar(30) DEFAULT NULL,
+  `CargoType` varchar(30) DEFAULT NULL,
+  `Length` smallint DEFAULT NULL,
+  `Breadth` smallint DEFAULT NULL,
+  `Draught` smallint DEFAULT NULL,
+  `AISDestination` varchar(50) DEFAULT NULL,
+  `ETA` datetime DEFAULT NULL,
+  `DestinationPort_Id` smallint DEFAULT NULL,
+  PRIMARY KEY (`AISMessage_Id`),
+  FOREIGN KEY (`AISMessage_Id`) REFERENCES `AIS_MESSAGE`(`Id`),
+  FOREIGN KEY (`DestinationPort_Id`) REFERENCES `PORT`(`Id`)
+);
+
+DROP TABLE IF EXISTS `POSITION_REPORT`;
+CREATE TABLE `POSITION_REPORT` (
+  `AISMessage_Id` mediumint unsigned NOT NULL,
+  `NavigationalStatus` varchar(40) DEFAULT NULL,
+  `Longitude` decimal(9,6) DEFAULT NULL,
+  `Latitude` decimal(8,6) DEFAULT NULL,
+  `RoT` decimal(4,1) DEFAULT NULL,
+  `SoG` decimal(4,1) DEFAULT NULL,
+  `CoG` decimal(4,1) DEFAULT NULL,
+  `Heading` smallint DEFAULT NULL,
+  `LastStaticData_Id` mediumint unsigned DEFAULT NULL,
+  `MapView1_Id` mediumint DEFAULT NULL,
+  `MapView2_Id` mediumint DEFAULT NULL,
+  `MapView3_Id` mediumint DEFAULT NULL,
+  PRIMARY KEY (`AISMessage_Id`),
+  FOREIGN KEY (`AISMessage_Id`) REFERENCES `AIS_MESSAGE`(`Id`),
+  FOREIGN KEY (`LastStaticData_Id`) REFERENCES `STATIC_DATA`(`AISMessage_Id`),
+  FOREIGN KEY (`MapView1_Id`) REFERENCES `MAP_VIEW`(`Id`),
+  FOREIGN KEY (`MapView2_Id`) REFERENCES `MAP_VIEW`(`Id`),
+  FOREIGN KEY (`MapView3_Id`) REFERENCES `MAP_VIEW`(`Id`)
+);
