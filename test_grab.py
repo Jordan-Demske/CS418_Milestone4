@@ -56,3 +56,19 @@ except mysql.connector.Error as err:
         print("Database does not exist")
     else:
         print(err)
+
+
+'''
+#{"Timestamp":"2020-11-18T00:00:00.000Z","Class":"Class A","MMSI":220490000,"MsgType":"position_report","Position":{"type":"Point","coordinates":[56.60658,8.088727]},"Status":"Under way using engine","RoT":35,"SoG":8.8,"CoG":12.2,"Heading":16},
+#{"Timestamp":"2020-11-18T00:00:00.000Z","Class":"Class A","MMSI":210169000,"MsgType":"static_data","IMO":9584865,"CallSign":"5BNZ3","Name":"KATHARINA SCHEPERS","VesselType":"Cargo","CargoTye":"Category X","Length":152,"Breadth":24,"Draught":7.8,"Destination":"NODRM","ETA":"2020-11-18T09:00:00.000Z","A":143,"B":9,"C":13,"D":11},
+
+json_data = '{"Timestamp":"2020-11-18T00:00:00.000Z","Class":"Class A","MMSI":220490000,"MsgType":"position_report","Position":{"type":"Point","coordinates":[56.60658,8.088727]},"Status":"Under way using engine","RoT":35,"SoG":8.8,"CoG":12.2,"Heading":16}'
+
+
+    def insert_msg(self, json_data):
+        msg_id, timestamp, mmsi, vessel_class, vessel_imo = extract( json.parse( json_data ))
+        with MySQLConnectionManager() as cnx:
+            cursor = cnx.cursor(prepared=True)
+            stmt = """INSERT INTO TABLE PositionReport VALUES (%s, %s,%s, %s)""" 
+            cursor.execute(stmt, (msg_id, timestamp, mmsi, lat, long))
+'''
