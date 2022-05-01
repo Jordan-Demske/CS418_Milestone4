@@ -1,4 +1,3 @@
-import json
 import mysql.connector
 from mysql.connector import errorcode
 
@@ -42,13 +41,15 @@ class MySQLCursorManager:
 try:
     with MySQLConnectionManager() as con:
         with MySQLCursorManager( con ) as cursor:
-        
-            cursor.execute("""SELECT * FROM port LIMIT 5;""")
-            rs = cursor.fetchall()
+            msg_id = 1
+            timestamp = "2020-11-18T00:00:00.000"
+            mmsi = 220490000
+            vessel_class = "Class A"
+            vessel_imo = 1000007
+            stmt = """INSERT INTO ais_message(Id, Timestamp, MMSI, Class, Vessel_IMO) VALUES(%s, %s, %s, %s, %s);""" 
+            cursor.execute(stmt, (msg_id, timestamp, mmsi, vessel_class, vessel_imo))
+            con.commit()
             
-            if rs and len(rs)>0:
-                print(rs) # need to reformat the print statement to be something more usefull
-
 except mysql.connector.Error as err:
     if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
         print("Something is wrong with your user name or password")
@@ -63,7 +64,6 @@ except mysql.connector.Error as err:
 #{"Timestamp":"2020-11-18T00:00:00.000Z","Class":"Class A","MMSI":210169000,"MsgType":"static_data","IMO":9584865,"CallSign":"5BNZ3","Name":"KATHARINA SCHEPERS","VesselType":"Cargo","CargoTye":"Category X","Length":152,"Breadth":24,"Draught":7.8,"Destination":"NODRM","ETA":"2020-11-18T09:00:00.000Z","A":143,"B":9,"C":13,"D":11},
 
 json_data = '{"Timestamp":"2020-11-18T00:00:00.000Z","Class":"Class A","MMSI":220490000,"MsgType":"position_report","Position":{"type":"Point","coordinates":[56.60658,8.088727]},"Status":"Under way using engine","RoT":35,"SoG":8.8,"CoG":12.2,"Heading":16}'
-
 
     def insert_msg(self, json_data):
         msg_id, timestamp, mmsi, vessel_class, vessel_imo = extract( json.parse( json_data ))

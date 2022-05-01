@@ -42,6 +42,28 @@ class MySQLCursorManager:
 
 class MySQL_DAO:
     
+    def insert_a_single_predefined_ais_message(): # need to read json data into variables
+        i=1
+        try:
+            with MySQLConnectionManager() as con:
+                with MySQLCursorManager( con ) as cursor:
+                    msg_id = i
+                    timestamp = "2020-11-18T00:00:00.000"
+                    mmsi = 220490000
+                    vessel_class = "Class A"
+                    vessel_imo = 1000007
+                    stmt = """INSERT INTO ais_message(Id, Timestamp, MMSI, Class, Vessel_IMO) VALUES(%s, %s, %s, %s, %s);""" 
+                    cursor.execute(stmt, (msg_id, timestamp, mmsi, vessel_class, vessel_imo))
+                    con.commit()
+                    
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+                print("Something is wrong with your user name or password")
+            elif err.errno == errorcode.ER_BAD_DB_ERROR:
+                print("Database does not exist")
+            else:
+                print(err)
+    
     def __select_all_recent_positions__():
         try:
             with MySQLConnectionManager() as con:
