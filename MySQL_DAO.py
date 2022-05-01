@@ -39,21 +39,71 @@ class MySQLCursorManager:
 
 
 class MySQL_DAO:
-
-    def insert_a_single_predefined_ais_message(self):  # need to read json data into variables
-        i = 1
+    
+    def __insert_ais_batch__(self):
         try:
             with MySQLConnectionManager() as con:
-                with MySQLCursorManager(con) as cursor:
-                    msg_id = i
-                    timestamp = "2020-11-18T00:00:00.000"
-                    mmsi = 220490000
-                    vessel_class = "Class A"
-                    vessel_imo = 1000007
-                    stmt = """INSERT INTO ais_message(Id, Timestamp, MMSI, Class, Vessel_IMO) VALUES(%s, %s, %s, %s, %s);"""
-                    cursor.execute(stmt, (msg_id, timestamp, mmsi, vessel_class, vessel_imo))
-                    con.commit()
+                with MySQLCursorManager( con ) as cursor:
+                    with open('test_input.json', 'r') as file:
+                        data = json.load(file)
+                        for msg in data:
+                            date = parser.isoparse(msg['Timestamp'])
+                            
+                            timestamp = date.strftime("%Y-%m-%d %H:%M:%S")
+                            mmsi = msg['MMSI']
+                            vessel_class = msg['Class']
 
+                            stmt = """INSERT INTO ais_message(Timestamp, MMSI, Class) VALUES(%s, %s, %s);""" 
+                            cursor.execute(stmt, (timestamp, mmsi, vessel_class))
+                            con.commit()
+                            
+                            msgType = msg['MsgType']
+                            
+                            if msgType == 'position_report':
+                                
+                                nav_status = None
+                                if "NavigationalStatus" in msg:
+                                    nav_status = msg["NavigationalStatus"]
+                                lat = msg['Position']['coordinates'][0]
+                                long = msg['Position']['coordinates'][1]
+                                rot = msg['RoT']
+                                sog = msg['SoG']
+                                cog = msg['CoG']
+                                heading = msg['Heading']
+                                mv1 = 1
+                                mv2 = None
+                                mv3 = None
+                                
+                                stmt = """INSERT INTO position_report(AISMessage_Id, NavigationalStatus, Longitude, Latitude, RoT, SoG, CoG, Heading, LastStaticData_Id, MapView1_Id, MapView2_Id, MapView3_Id)
+                                          VALUES(LAST_INSERT_ID(), %s, %s, %s, %s, %s, %s, %s, (SELECT max(STATIC_DATA.AISMessage_ID) FROM STATIC_DATA, AIS_MESSAGE WHERE STATIC_DATA.AISMessage_Id = AIS_MESSAGE.Id AND AIS_MESSAGE.MMSI = %s), %s, %s, %s);""" 
+                                cursor.execute(stmt, (nav_status, lat, long, rot, sog, cog, heading, mmsi, mv1, mv2, mv3))
+                                con.commit()
+                            
+                            elif msgType == 'static_data':
+                                
+                                aisimo = msg['IMO']
+                                if aisimo == 'Unknown':
+                                    aisimo = None
+                                call_sign = msg['CallSign']
+                                name = msg['Name']
+                                vessel_type = msg['VesselType']
+                                cargo_type = None
+                                length = msg['Length']
+                                breadth = msg['Breadth']
+                                draught = msg['Draught']
+                                ais_destination = None
+                                
+                                date = parser.isoparse(msg['ETA'])
+                                eta = date.strftime("%Y-%m-%d %H:%M:%S")
+                                
+                                destination_port_id = None
+                                if "Destination" in msg:
+                                    destination = msg["Destination"]
+                                
+                                stmt = """INSERT INTO static_data(AISMessage_ID, AISIMO, CallSign, Name, VesselType, CargoType, Length, Breadth, Draught, AISDestination, ETA, DestinationPort_Id)
+                                          VALUES(LAST_INSERT_ID(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""" 
+                                cursor.execute(stmt, (aisimo, call_sign, name, vessel_type, cargo_type, length, breadth, draught, ais_destination, eta, destination_port_id))
+                                con.commit()
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
                 print("Something is wrong with your user name or password")
@@ -61,6 +111,79 @@ class MySQL_DAO:
                 print("Database does not exist")
             else:
                 print(err)
+
+    def insert_ais_message():
+        try:
+            with MySQLConnectionManager() as con:
+                with MySQLCursorManager( con ) as cursor:
+                    with open('test_input.json', 'r') as file:
+                        data = json.load(file)
+                        for msg in data:
+                            date = parser.isoparse(msg['Timestamp'])
+                            
+                            timestamp = date.strftime("%Y-%m-%d %H:%M:%S")
+                            mmsi = msg['MMSI']
+                            vessel_class = msg['Class']
+
+                            stmt = """INSERT INTO ais_message(Timestamp, MMSI, Class) VALUES(%s, %s, %s);""" 
+                            cursor.execute(stmt, (timestamp, mmsi, vessel_class))
+                            con.commit()
+                            
+                            msgType = msg['MsgType']
+                            
+                            if msgType == 'position_report':
+                                
+                                nav_status = None
+                                if "NavigationalStatus" in msg:
+                                    nav_status = msg["NavigationalStatus"]
+                                lat = msg['Position']['coordinates'][0]
+                                long = msg['Position']['coordinates'][1]
+                                rot = msg['RoT']
+                                sog = msg['SoG']
+                                cog = msg['CoG']
+                                heading = msg['Heading']
+                                mv1 = 1
+                                mv2 = None
+                                mv3 = None
+                                
+                                stmt = """INSERT INTO position_report(AISMessage_Id, NavigationalStatus, Longitude, Latitude, RoT, SoG, CoG, Heading, LastStaticData_Id, MapView1_Id, MapView2_Id, MapView3_Id)
+                                          VALUES(LAST_INSERT_ID(), %s, %s, %s, %s, %s, %s, %s, (SELECT max(STATIC_DATA.AISMessage_ID) FROM STATIC_DATA, AIS_MESSAGE WHERE STATIC_DATA.AISMessage_Id = AIS_MESSAGE.Id AND AIS_MESSAGE.MMSI = %s), %s, %s, %s);""" 
+                                cursor.execute(stmt, (nav_status, lat, long, rot, sog, cog, heading, mmsi, mv1, mv2, mv3))
+                                con.commit()
+                            
+                            elif msgType == 'static_data':
+                                
+                                aisimo = msg['IMO']
+                                if aisimo == 'Unknown':
+                                    aisimo = None
+                                call_sign = msg['CallSign']
+                                name = msg['Name']
+                                vessel_type = msg['VesselType']
+                                cargo_type = None
+                                length = msg['Length']
+                                breadth = msg['Breadth']
+                                draught = msg['Draught']
+                                ais_destination = None
+                                
+                                date = parser.isoparse(msg['ETA'])
+                                eta = date.strftime("%Y-%m-%d %H:%M:%S")
+                                
+                                destination_port_id = None
+                                if "Destination" in msg:
+                                    destination = msg["Destination"]
+                                
+                                stmt = """INSERT INTO static_data(AISMessage_ID, AISIMO, CallSign, Name, VesselType, CargoType, Length, Breadth, Draught, AISDestination, ETA, DestinationPort_Id)
+                                          VALUES(LAST_INSERT_ID(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""" 
+                                cursor.execute(stmt, (aisimo, call_sign, name, vessel_type, cargo_type, length, breadth, draught, ais_destination, eta, destination_port_id))
+                                con.commit()
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+                print("Something is wrong with your user name or password")
+            elif err.errno == errorcode.ER_BAD_DB_ERROR:
+                print("Database does not exist")
+            else:
+                print(err)
+
 
     def __select_all_recent_positions__(self):
         try:
@@ -125,11 +248,34 @@ class MySQL_DAO:
             else:
                 print(err)
 
+    def get_tile(scale, long, lat):
+        """
+        Get the boundaries of tile of scale 2 or 3 that contains the given position.
+
+        :param scale: zoom level (2 or 3)
+        :type scale: int
+        :param long: longitude
+        :type long: float
+        :param lat: latitude
+        :type lat: float
+        :return: object {'south': ... , 'north': ... , } describing the boundaries of the containing tile
+        :rtype: dict
+        """
+        s, n, w, e = (0.0, 0.0, 0.0, 0.0)
+        if scale == 1:
+            s, n, w, e = (SOUTH, NORTH, WEST, EAST)
+        elif scale == 2:
+            s, n, w, e = math.floor(lat * 2) / 2, math.ceil(lat * 2) / 2, math.floor(long), math.ceil(long)
+        elif scale == 3:
+            s, n, w, e = math.floor(lat * 4) / 4, math.ceil(lat * 4) / 4, math.floor(long * 2) / 2, math.ceil(long * 2) / 2
+
+        return {'south': s, 'north': n, 'west': w, 'east': e}
 
 # vvv --- TO DO --- vvv
 
 '''
 
+DONE?
 def insert_ais_batch():
     return number of insertions
 

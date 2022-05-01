@@ -3,6 +3,11 @@ from mysql.connector import errorcode
 
 import configparser
 
+import math
+
+import sys
+import json
+from dateutil import parser
 
 class MySQLConnectionManager:
     
@@ -12,7 +17,6 @@ class MySQLConnectionManager:
         self.config=configparser.ConfigParser()
         
     def __enter__(self):
-        
         self.config.read(self.config_file)
         
         self.cnx = mysql.connector.connect( 
@@ -38,17 +42,70 @@ class MySQLCursorManager:
         print("Closing cursor")
         self.cursor.close()
 
+
 try:
     with MySQLConnectionManager() as con:
         with MySQLCursorManager( con ) as cursor:
-            msg_id = 1
-            timestamp = "2020-11-18T00:00:00.000"
-            mmsi = 220490000
-            vessel_class = "Class A"
-            vessel_imo = 1000007
-            stmt = """INSERT INTO ais_message(Id, Timestamp, MMSI, Class, Vessel_IMO) VALUES(%s, %s, %s, %s, %s);""" 
-            cursor.execute(stmt, (msg_id, timestamp, mmsi, vessel_class, vessel_imo))
-            con.commit()
+            with open('test_input.json', 'r') as file:
+                data = json.load(file)
+                for msg in data:
+                    date = parser.isoparse(msg['Timestamp'])
+                    
+                    timestamp = date.strftime("%Y-%m-%d %H:%M:%S")
+                    mmsi = msg['MMSI']
+                    vessel_class = msg['Class']
+
+                    stmt = """INSERT INTO ais_message(Timestamp, MMSI, Class) VALUES(%s, %s, %s);""" 
+                    cursor.execute(stmt, (timestamp, mmsi, vessel_class))
+                    con.commit()
+                    
+                    msgType = msg['MsgType']
+                    
+                    if msgType == 'position_report':
+                        
+                        nav_status = None
+                        if "NavigationalStatus" in msg:
+                            nav_status = msg["NavigationalStatus"]
+                        lat = msg['Position']['coordinates'][0]
+                        long = msg['Position']['coordinates'][1]
+                        rot = msg['RoT']
+                        sog = msg['SoG']
+                        cog = msg['CoG']
+                        heading = msg['Heading']
+                        mv1 = 1
+                        mv2 = None
+                        mv3 = None
+                        
+                        stmt = """INSERT INTO position_report(AISMessage_Id, NavigationalStatus, Longitude, Latitude, RoT, SoG, CoG, Heading, LastStaticData_Id, MapView1_Id, MapView2_Id, MapView3_Id)
+                                  VALUES(LAST_INSERT_ID(), %s, %s, %s, %s, %s, %s, %s, (SELECT max(STATIC_DATA.AISMessage_ID) FROM STATIC_DATA, AIS_MESSAGE WHERE STATIC_DATA.AISMessage_Id = AIS_MESSAGE.Id AND AIS_MESSAGE.MMSI = %s), %s, %s, %s);""" 
+                        cursor.execute(stmt, (nav_status, lat, long, rot, sog, cog, heading, mmsi, mv1, mv2, mv3))
+                        con.commit()
+                    
+                    elif msgType == 'static_data':
+                        
+                        aisimo = msg['IMO']
+                        if aisimo == 'Unknown':
+                            aisimo = None
+                        call_sign = msg['CallSign']
+                        name = msg['Name']
+                        vessel_type = msg['VesselType']
+                        cargo_type = None
+                        length = msg['Length']
+                        breadth = msg['Breadth']
+                        draught = msg['Draught']
+                        ais_destination = None
+                        
+                        date = parser.isoparse(msg['ETA'])
+                        eta = date.strftime("%Y-%m-%d %H:%M:%S")
+
+                        destination_port_id = None
+                        if "Destination" in msg:
+                            destination = msg["Destination"]
+                        
+                        stmt = """INSERT INTO static_data(AISMessage_ID, AISIMO, CallSign, Name, VesselType, CargoType, Length, Breadth, Draught, AISDestination, ETA, DestinationPort_Id)
+                                  VALUES(LAST_INSERT_ID(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""" 
+                        cursor.execute(stmt, (aisimo, call_sign, name, vessel_type, cargo_type, length, breadth, draught, ais_destination, eta, destination_port_id))
+                        con.commit()
             
 except mysql.connector.Error as err:
     if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
