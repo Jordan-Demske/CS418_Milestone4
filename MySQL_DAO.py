@@ -6,31 +6,29 @@ import configparser
 
 
 class MySQLConnectionManager:
-    
-    config_file='connection_data.conf'
+    config_file = 'connection_data.conf'
 
     def __init__(self):
-        self.config=configparser.ConfigParser()
-        
+        self.config = configparser.ConfigParser()
+
     def __enter__(self):
-        
         self.config.read(self.config_file)
-        
-        self.cnx = mysql.connector.connect( 
+
+        self.cnx = mysql.connector.connect(
             user=self.config['SQL']['user'],
-            password=self.config['SQL']['password'], 
+            password=self.config['SQL']['password'],
             database=self.config['SQL']['database'])
         return self.cnx
-        
+
     def __exit__(self, *ignore):
-        print("Closing connexion")
+        print("Closing connection")
         self.cnx.close()
 
 
 class MySQLCursorManager:
 
-    def __init__(self, cnx): 
-        self.cursor=cnx.cursor()
+    def __init__(self, cnx):
+        self.cursor = cnx.cursor()
 
     def __enter__(self):
         return self.cursor
@@ -41,21 +39,21 @@ class MySQLCursorManager:
 
 
 class MySQL_DAO:
-    
-    def insert_a_single_predefined_ais_message(): # need to read json data into variables
-        i=1
+
+    def insert_a_single_predefined_ais_message(self):  # need to read json data into variables
+        i = 1
         try:
             with MySQLConnectionManager() as con:
-                with MySQLCursorManager( con ) as cursor:
+                with MySQLCursorManager(con) as cursor:
                     msg_id = i
                     timestamp = "2020-11-18T00:00:00.000"
                     mmsi = 220490000
                     vessel_class = "Class A"
                     vessel_imo = 1000007
-                    stmt = """INSERT INTO ais_message(Id, Timestamp, MMSI, Class, Vessel_IMO) VALUES(%s, %s, %s, %s, %s);""" 
+                    stmt = """INSERT INTO ais_message(Id, Timestamp, MMSI, Class, Vessel_IMO) VALUES(%s, %s, %s, %s, %s);"""
                     cursor.execute(stmt, (msg_id, timestamp, mmsi, vessel_class, vessel_imo))
                     con.commit()
-                    
+
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
                 print("Something is wrong with your user name or password")
@@ -63,20 +61,19 @@ class MySQL_DAO:
                 print("Database does not exist")
             else:
                 print(err)
-    
-    def __select_all_recent_positions__():
+
+    def __select_all_recent_positions__(self):
         try:
             with MySQLConnectionManager() as con:
-                with MySQLCursorManager( con ) as cursor:
-                    
-                    #All Most Recent Positions
+                with MySQLCursorManager(con) as cursor:
+                    # All Most Recent Positions
                     cursor.execute("""SELECT t.Id, t.MMSI, t.LatestTime, pos.Latitude, pos.Longitude
                                       FROM (SELECT Id, MMSI, max(Timestamp) as LatestTime from AIS_MESSAGE GROUP BY MMSI) t, POSITION_REPORT as pos
                                       WHERE t.Id = pos.AISMessage_Id ORDER BY t.LatestTime desc;""")
                     rs = cursor.fetchall()
-                    
-                    if rs and len(rs)>0:
-                        print(rs) # need to reformat the print statement to be something more usefull
+
+                    if rs and len(rs) > 0:
+                        print(rs)  # need to reformat the print statement to be something more usefull
 
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
@@ -86,19 +83,18 @@ class MySQL_DAO:
             else:
                 print(err)
 
-    def __select_most_recent_from_mmsi__(mmsi): # this might have a formating err
+    def __select_most_recent_from_mmsi__(self, mmsi):  # this might have a formating err
         try:
             with MySQLConnectionManager() as con:
-                with MySQLCursorManager( con ) as cursor:
-                    
-                    #Most recent of given MMSI - CHANGE 265866000 ------------ This is probably the wrong way to implement this vv
+                with MySQLCursorManager(con) as cursor:
+                    # Most recent of given MMSI - CHANGE 265866000 ------------ This is probably the wrong way to implement this vv
                     cursor.execute("""SELECT t.MMSI, pos.Latitude, pos.Longitude, t.Vessel_IMO
                                       FROM (SELECT Id, MMSI, Vessel_IMO, max(Timestamp) from AIS_MESSAGE WHERE MMSI = $mmsi) t, POSITION_REPORT as pos
                                       WHERE t.Id = pos.AISMessage_Id;""")
                     rs = cursor.fetchone()
-                    
-                    if rs and len(rs)>0:
-                        print(rs) # need to reformat the print statement to be something more usefull
+
+                    if rs and len(rs) > 0:
+                        print(rs)  # need to reformat the print statement to be something more usefull
 
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
@@ -108,19 +104,18 @@ class MySQL_DAO:
             else:
                 print(err)
 
-    def __select_most_recent_5_ship_positions__():
+    def __select_most_recent_5_ship_positions__(self):
         try:
             with MySQLConnectionManager() as con:
-                with MySQLCursorManager( con ) as cursor:
-                    
-                    #Most recent 5 ship positions
+                with MySQLCursorManager(con) as cursor:
+                    # Most recent 5 ship positions
                     cursor.execute("""SELECT t.MMSI, pos.Latitude, pos.Longitude, t.Vessel_IMO
                                       FROM (SELECT Id, MMSI, Vessel_IMO, Timestamp FROM AIS_MESSAGE WHERE MMSI = "265866000" ORDER BY Timestamp DESC LIMIT 5) t, POSITION_REPORT as pos
                                       WHERE t.Id = pos.AISMessage_Id;""")
                     rs = cursor.fetchall()
-                    
-                    if rs and len(rs)>0:
-                        print(rs) # need to reformat the print statement to be something more usefull
+
+                    if rs and len(rs) > 0:
+                        print(rs)  # need to reformat the print statement to be something more usefull
 
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
@@ -129,6 +124,7 @@ class MySQL_DAO:
                 print("Database does not exist")
             else:
                 print(err)
+
 
 # vvv --- TO DO --- vvv
 
