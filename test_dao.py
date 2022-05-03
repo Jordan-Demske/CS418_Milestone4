@@ -124,7 +124,31 @@ class TMBTest(unittest.TestCase):
         inserted_count = tmb.insert_ais_batch(self.batch)
         self.assertEqual(json.loads(inserted_count)['inserted'], 7)
 
-    def test_insert_ais_message_interface(self):
+    def test_insert_ais_message_interface_1(self):
+        """
+        Function `insert_ais_message` checks the type of message passed in.
+        """
+        tmb = MySQL_DAO(True)
+        typeMsg = tmb.insert_ais_message("{\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":304858000,\"MsgType\":\"position_report\",\"Position\":{\"type\":\"Point\",\"coordinates\":[55.218332,13.371672]},\"Status\":\"Under way using engine\",\"SoG\":10.8,\"CoG\":94.3,\"Heading\":97}")
+        self.assertEqual(typeMsg, "pos")
+
+    def test_insert_ais_message_interface_2(self):
+        """
+        Function `insert_ais_message` checks the type of message passed in.
+        """
+        tmb = MySQL_DAO(True)
+        typeMsg = tmb.insert_ais_message("{\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":304858000,\"MsgType\":\"static_data\",\"Position\":{\"type\":\"Point\",\"coordinates\":[55.218332,13.371672]},\"Status\":\"Under way using engine\",\"SoG\":10.8,\"CoG\":94.3,\"Heading\":97}")
+        self.assertEqual(typeMsg, "stat")
+
+    def test_insert_ais_message_actual(self):
+        """
+        Function `insert_ais_message` checks the type of message passed in.
+        """
+        tmb = MySQL_DAO()
+        typeMsg = tmb.insert_ais_message(json.loads("{\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":304858000,\"MsgType\":\"static_data\",\"Position\":{\"type\":\"Point\",\"coordinates\":[55.218332,13.371672]},\"Status\":\"Under way using engine\",\"SoG\":10.8,\"CoG\":94.3,\"Heading\":97}"))
+        self.assertEqual(typeMsg, "stat")
+
+    def test_delete_recent_interface(self):
         """
         Function `insert_ais_message` returns the number of messages inserted.
         """
