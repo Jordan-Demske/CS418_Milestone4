@@ -100,21 +100,39 @@ class TMBTest(unittest.TestCase):
         inserted = tmb.insert_ais_batch(self.batch)
         self.assertTrue(type(inserted) is int and inserted >= 0)
 
-    def test_insert_message_batch_interface_2(self):
+    def test_insert_ais_batch_interface_2(self):
         """
-        Function `insert_message_batch` returns -1 if the input is not parsable JSON.
+        Function `insert_ais_batch` returns -1 if the input is not parsable JSON.
         """
         tmb = MySQL_DAO(True)
         inserted_count = tmb.insert_ais_batch("Not JSON")
         self.assertEqual(inserted_count, -1)
 
-    def test_insert_message_batch_interface_3(self):
+    def test_insert_ais_batch_interface_3(self):
         """
-        Function `insert_message_batch` returns -1 if the input is not a JSON array.
+        Function `insert_ais_batch` returns -1 if the input is not a JSON array.
         """
         tmb = MySQL_DAO(True)
         inserted_count = tmb.insert_ais_batch("{\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":304858000,\"MsgType\":\"position_report\",\"Position\":{\"type\":\"Point\",\"coordinates\":[55.218332,13.371672]},\"Status\":\"Under way using engine\",\"SoG\":10.8,\"CoG\":94.3,\"Heading\":97}")
         self.assertEqual(inserted_count, -1)
+
+    def test_insert_ais_batch_actual(self):
+        """
+        Function `insert_ais_batch` returns the number of messages inserted.
+        """
+        tmb = MySQL_DAO()
+        inserted_count = tmb.insert_ais_batch(self.batch)
+        self.assertEqual(json.loads(inserted_count)['inserted'], 7)
+
+    def test_insert_ais_message_interface(self):
+        """
+        Function `insert_ais_message` returns the number of messages inserted.
+        """
+        tmb = MySQL_DAO(True)
+        inserted_count = tmb.insert_ais_batch("{\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":304858000,\"MsgType\":\"position_report\",\"Position\":{\"type\":\"Point\",\"coordinates\":[55.218332,13.371672]},\"Status\":\"Under way using engine\",\"SoG\":10.8,\"CoG\":94.3,\"Heading\":97}")
+        self.assertEqual(json.loads(inserted_count)['inserted'], 7)
+
+
 
 
 if __name__ == '__main__':
