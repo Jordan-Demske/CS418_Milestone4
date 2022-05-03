@@ -64,10 +64,12 @@ class MySQL_DAO:
         return msg
 
     def format_position_report(self, msg):
-        if "Position" in msg:
+        if "Position" in msg and msg["Position"] is not None:
             for parameter in self.position_parameters:
                 if parameter not in msg['Position']:
                     msg['Position'] = None
+        else:
+            msg['Position'] = None
         if "Status" not in msg or msg['Status'] == "Unknown value":
             msg['Status'] = None
         for parameter in self.position_report_parameters:
@@ -117,6 +119,8 @@ class MySQL_DAO:
                     stmt = """INSERT INTO AIS_MESSAGE(Timestamp, MMSI, Class) VALUES(%s, %s, %s);"""
                     cursor.execute(stmt, (msg['Timestamp'], msg['MMSI'], msg['Class']))
                     con.commit()
+                    if cursor.rowcount == 0:
+                        return json.dumps({"success": 0})
 
                     if "MsgType" not in msg:
                         return
@@ -177,6 +181,31 @@ class MySQL_DAO:
             else:
                 print(err)
             return json.dumps({"success": 0})
+
+    def delete_ais_messages(self):
+        
+        if self.is_stub:
+            return True
+        try:
+            with MySQLConnectionManager() as con:
+                with MySQLCursorManager(con) as cursor:
+                    cursor.execute(
+                        """TRUNCATE TABLE POSITION_REPORT;""")
+                    cursor.execute(
+                        """TRUNCATE TABLE STATIC_DATA;""")
+                    cursor.execute(
+                        """TRUNCATE TABLE AIS_MESSAGE;""")
+                    deletions = cursor.rowcount
+                    con.commit()
+                    return json.dumps({"deletions": deletions})
+
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+                print("Something is wrong with your user name or password")
+            elif err.errno == errorcode.ER_BAD_DB_ERROR:
+                print("Database does not exist")
+            else:
+                print(err)
 
     def delete_old_ais_messages(self):
         if self.is_stub:

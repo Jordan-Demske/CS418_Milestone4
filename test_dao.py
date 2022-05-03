@@ -123,14 +123,18 @@ class TMBTest(unittest.TestCase):
         """
         tmb = MySQL_DAO()
         inserted_count = tmb.insert_ais_batch(self.batch)
-        self.assertEqual(json.loads(inserted_count)['inserted'], 7)
+        self.assertEqual(json.loads(inserted_count)['inserts'], 7)
 
     def test_insert_ais_message_interface_1(self):
         """
         Function `insert_ais_message` checks the type of message passed in.
         """
         tmb = MySQL_DAO(True)
-        typeMsg = tmb.insert_ais_message("{\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":304858000,\"MsgType\":\"position_report\",\"Position\":{\"type\":\"Point\",\"coordinates\":[55.218332,13.371672]},\"Status\":\"Under way using engine\",\"SoG\":10.8,\"CoG\":94.3,\"Heading\":97}")
+        typeMsg = tmb.insert_ais_message(json.loads("{\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class "
+                                                    "A\",\"MMSI\":304858000,\"MsgType\":\"position_report\","
+                                                    "\"Position\":{\"type\":\"Point\",\"coordinates\":[55.218332,"
+                                                    "13.371672]},\"Status\":\"Under way using engine\",\"SoG\":10.8,"
+                                                    "\"CoG\":94.3,\"Heading\":97}"))
         self.assertEqual(typeMsg, "pos")
 
     def test_insert_ais_message_interface_2(self):
@@ -138,7 +142,11 @@ class TMBTest(unittest.TestCase):
         Function `insert_ais_message` checks the type of message passed in.
         """
         tmb = MySQL_DAO(True)
-        typeMsg = tmb.insert_ais_message("{\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":304858000,\"MsgType\":\"static_data\",\"Position\":{\"type\":\"Point\",\"coordinates\":[55.218332,13.371672]},\"Status\":\"Under way using engine\",\"SoG\":10.8,\"CoG\":94.3,\"Heading\":97}")
+        typeMsg = tmb.insert_ais_message(json.loads("{\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class "
+                                                    "A\",\"MMSI\":304858000,\"MsgType\":\"static_data\","
+                                                    "\"Position\":{\"type\":\"Point\",\"coordinates\":[55.218332,"
+                                                    "13.371672]},\"Status\":\"Under way using engine\",\"SoG\":10.8,"
+                                                    "\"CoG\":94.3,\"Heading\":97}"))
         self.assertEqual(typeMsg, "stat")
 
     def test_insert_ais_message_actual(self):
@@ -151,7 +159,7 @@ class TMBTest(unittest.TestCase):
 
     def test_delete_old_ais_messages_interface(self):
         """
-        Function `delete_old_ais_messages` exists.
+        Function `delete_old_ais_messages` exists and uses no parameters.
         """
         tmb = MySQL_DAO(True)
         deletes = tmb.delete_old_ais_messages()
@@ -162,9 +170,13 @@ class TMBTest(unittest.TestCase):
         Function `delete_old_ais_messages` deletes records older than 5 minutes.
         """
         tmb = MySQL_DAO()
+
+        #All current AIS messages will be older than 5 minutes, so get rid of them
+        tmb.delete_old_ais_messages()
+
         tmb.insert_ais_batch(self.batch)
         deletes = tmb.delete_old_ais_messages()
-        self.assertGreater(json.loads(deletes)['deletions'], 5)
+        self.assertGreater(json.loads(deletes)['deletions'], 7)
 
     def test_select_all_recent_positions_interface(self):
         """
