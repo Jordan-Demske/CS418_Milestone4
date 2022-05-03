@@ -179,6 +179,8 @@ class MySQL_DAO:
             return json.dumps({"success": 0})
 
     def delete_old_ais_messages(self):
+        if self.is_stub:
+            return True
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:
@@ -238,7 +240,7 @@ class MySQL_DAO:
             else:
                 print(err)
 
-    def get_optional_vessel_data(self, mmsi, imo=None, name=None):
+    def get_optional_vessel_data(self, mmsi):
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:
@@ -277,6 +279,8 @@ class MySQL_DAO:
         }
 
     def select_all_recent_positions(self):
+        if self.is_stub:
+            return True
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:
@@ -301,6 +305,8 @@ class MySQL_DAO:
                 print(err)
 
     def select_most_recent_from_mmsi(self, mmsi):
+        if self.is_stub:
+            return True
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:

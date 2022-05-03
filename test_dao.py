@@ -1,14 +1,15 @@
 import unittest
 import json
 from MySQL_DAO import MySQL_DAO, MySQLCursorManager, MySQLConnectionManager
+from datetime import datetime
 
 
 class TMBTest(unittest.TestCase):
     batch = """[ {\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":304858000,\"MsgType\":\"position_report\",\"Position\":{\"type\":\"Point\",\"coordinates\":[55.218332,13.371672]},\"Status\":\"Under way using engine\",\"SoG\":10.8,\"CoG\":94.3,\"Heading\":97},
                 {\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"AtoN\",\"MMSI\":992111840,\"MsgType\":\"static_data\",\"IMO\":\"Unknown\",\"Name\":\"WIND FARM BALTIC1NW\",\"VesselType\":\"Undefined\",\"Length\":60,\"Breadth\":60,\"A\":30,\"B\":30,\"C\":30,\"D\":30},
                 {\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":219005465,\"MsgType\":\"position_report\",\"Position\":{\"type\":\"Point\",\"coordinates\":[54.572602,11.929218]},\"Status\":\"Under way using engine\",\"RoT\":0,\"SoG\":0,\"CoG\":298.7,\"Heading\":203},
-                {\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":257961000,\"MsgType\":\"position_report\",\"Position\":{\"type\":\"Point\",\"coordinates\":[55.00316,12.809015]},\"Status\":\"Under way using engine\",\"RoT\":0,\"SoG\":0.2,\"CoG\":225.6,\"Heading\":240},
-                {\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"AtoN\",\"MMSI\":992111923,\"MsgType\":\"static_data\",\"IMO\":\"Unknown\",\"Name\":\"BALTIC2 WINDFARM SW\",\"VesselType\":\"Undefined\",\"Length\":8,\"Breadth\":12,\"A\":4,\"B\":4,\"C\":4,\"D\":8},
+                {\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":636092297,\"MsgType\":\"position_report\",\"Position\":{\"type\":\"Point\",\"coordinates\":[55.00316,12.809015]},\"Status\":\"Under way using engine\",\"RoT\":0,\"SoG\":0.2,\"CoG\":225.6,\"Heading\":240},
+                {\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"AtoN\",\"MMSI\":636092297,\"MsgType\":\"static_data\",\"IMO\":\"9534298\",\"Name\":\"BALTIC2 WINDFARM SW\",\"VesselType\":\"Undefined\",\"Length\":8,\"Breadth\":12,\"A\":4,\"B\":4,\"C\":4,\"D\":8},
                 {\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":257385000,\"MsgType\":\"position_report\",\"Position\":{\"type\":\"Point\",\"coordinates\":[55.219403,13.127725]},\"Status\":\"Under way using engine\",\"RoT\":25.7,\"SoG\":12.3,\"CoG\":96.5,\"Heading\":101},
                 {\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":376503000,\"MsgType\":\"position_report\",\"Position\":{\"type\":\"Point\",\"coordinates\":[54.519373,11.47914]},\"Status\":\"Under way using engine\",\"RoT\":0,\"SoG\":7.6,\"CoG\":294.4,\"Heading\":290} ]"""
 
@@ -145,16 +146,60 @@ class TMBTest(unittest.TestCase):
         Function `insert_ais_message` checks the type of message passed in.
         """
         tmb = MySQL_DAO()
-        typeMsg = tmb.insert_ais_message(json.loads("{\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":304858000,\"MsgType\":\"static_data\",\"Position\":{\"type\":\"Point\",\"coordinates\":[55.218332,13.371672]},\"Status\":\"Under way using engine\",\"SoG\":10.8,\"CoG\":94.3,\"Heading\":97}"))
-        self.assertEqual(typeMsg, "stat")
+        result = tmb.insert_ais_message(json.loads("{\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":304858000,\"MsgType\":\"static_data\",\"Position\":{\"type\":\"Point\",\"coordinates\":[55.218332,13.371672]},\"Status\":\"Under way using engine\",\"SoG\":10.8,\"CoG\":94.3,\"Heading\":97}"))
+        self.assertEqual(json.loads(result)['success'], 1)
 
-    def test_delete_recent_interface(self):
+    def test_delete_old_ais_messages_interface(self):
         """
-        Function `insert_ais_message` returns the number of messages inserted.
+        Function `delete_old_ais_messages` exists.
         """
         tmb = MySQL_DAO(True)
-        inserted_count = tmb.insert_ais_batch("{\"Timestamp\":\"2020-11-18T00:00:00.000Z\",\"Class\":\"Class A\",\"MMSI\":304858000,\"MsgType\":\"position_report\",\"Position\":{\"type\":\"Point\",\"coordinates\":[55.218332,13.371672]},\"Status\":\"Under way using engine\",\"SoG\":10.8,\"CoG\":94.3,\"Heading\":97}")
-        self.assertEqual(json.loads(inserted_count)['inserted'], 7)
+        deletes = tmb.delete_old_ais_messages()
+        self.assertTrue(deletes)
+
+    def test_delete_old_ais_messages_actual(self):
+        """
+        Function `delete_old_ais_messages` deletes records older than 5 minutes.
+        """
+        tmb = MySQL_DAO()
+        tmb.insert_ais_batch(self.batch)
+        deletes = tmb.delete_old_ais_messages()
+        self.assertGreater(json.loads(deletes)['deletions'], 5)
+
+    def test_select_all_recent_positions_interface(self):
+        """
+        Function `select_all_recent_positions` exists.
+        """
+        tmb = MySQL_DAO(True)
+        results = tmb.select_all_recent_positions()
+        self.assertTrue(results)
+
+    def test_select_all_recent_positions_actual(self):
+        """
+        Function `select_all_recent_positions` shows the most recent positions.
+        """
+        tmb = MySQL_DAO()
+        tmb.insert_ais_batch(self.batch)
+        deletes = tmb.select_all_recent_positions()
+        self.assertGreater(json.loads(deletes)['vessels'], 3)
+        deletes = tmb.delete_old_ais_messages()
+
+    def test_select_most_recent_from_mmsi_interface(self):
+        """
+        Function `select_most_recent_from_mmsi` exists.
+        """
+        tmb = MySQL_DAO(True)
+        result = tmb.select_most_recent_from_mmsi(self.batch)
+        self.assertTrue(result)
+
+    def test_select_most_recent_from_mmsi_actual(self):
+        """
+        Function `select_most_recent_from_mmsi` exists.
+        """
+        tmb = MySQL_DAO()
+        tmb.insert_ais_batch(self.batch)
+        results = tmb.select_most_recent_from_mmsi(636092297)
+        self.assertEqual(json.loads(results)['lat'], 55.00316)
 
 
 
