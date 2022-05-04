@@ -1,3 +1,4 @@
+import base64
 import json
 import math
 import os
@@ -759,22 +760,22 @@ class MySQL_DAO:
                 "ContainerMapView_Id": None
             }
         return {
-                "Id": tile[0],
-                "Name": tile[1],
-                "LongitudeW": float(tile[2]),
-                "LatitudeS": float(tile[3]),
-                "LongitudeE": float(tile[4]),
-                "LatitudeN": float(tile[5]),
-                "Scale": tile[6],
-                "RasterFile": tile[7],
-                "ImageWidth": tile[8],
-                "ImageHeight": tile[9],
-                "ActualLongitudeW": float(tile[10]),
-                "ActualLatitudeS": float(tile[11]),
-                "ActualLongitudeE": float(tile[12]),
-                "ActualLatitudeN": float(tile[13]),
-                "ContainerMapView_Id": tile[14]
-            }
+            "Id": tile[0],
+            "Name": tile[1],
+            "LongitudeW": float(tile[2]),
+            "LatitudeS": float(tile[3]),
+            "LongitudeE": float(tile[4]),
+            "LatitudeN": float(tile[5]),
+            "Scale": tile[6],
+            "RasterFile": tile[7],
+            "ImageWidth": tile[8],
+            "ImageHeight": tile[9],
+            "ActualLongitudeW": float(tile[10]),
+            "ActualLatitudeS": float(tile[11]),
+            "ActualLongitudeE": float(tile[12]),
+            "ActualLatitudeN": float(tile[13]),
+            "ContainerMapView_Id": tile[14]
+        }
 
     def given_tile_find_contained_tiles(self, map_tile_id):
         if self.is_stub:
@@ -810,12 +811,13 @@ class MySQL_DAO:
                     cursor.execute("""SELECT MAP_VIEW.RasterFile
                                        FROM MAP_VIEW
                                        WHERE MAP_VIEW.Id = %s""", (map_tile_id,))
+                    if cursor.rowcount == 0:
+                        return -1
                     tile_image = cursor.fetchone()[0]
-                    path = os.path.relpath('..\\data\\denmark_tiles\\' + tile_image, os.path.dirname(__file__))
-                    f = open(path, 'rb')
-                    file_data = f.read()
-                    f.close()
-                    return file_data
+                    path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'denmark_tiles', tile_image))
+                    with open(path, 'rb') as f:
+                        file_data = base64.b64encode(f.read())
+                        return file_data
 
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:

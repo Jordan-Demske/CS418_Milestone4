@@ -1,3 +1,6 @@
+import base64
+import configparser
+import os
 import unittest
 import json
 from decimal import Decimal
@@ -743,15 +746,15 @@ class TMBTest(unittest.TestCase):
         tmb = MySQL_DAO(True)
         results = json.loads(tmb.read_ship_pos_in_ts3_given_port("Nyborg", "Denmark"))
         self.assertEqual(results, {"ports": [{
-                "Id": None,
-                "Name": None,
-                "Country": None,
-                "lat": None,
-                "long": None,
-                "MapView1_Id": None,
-                "MapView2_Id": None,
-                "MapView3_Id": None
-            }]})
+            "Id": None,
+            "Name": None,
+            "Country": None,
+            "lat": None,
+            "long": None,
+            "MapView1_Id": None,
+            "MapView2_Id": None,
+            "MapView3_Id": None
+        }]})
 
     def test_read_ship_pos_in_ts3_given_port_actual_1(self):
         """
@@ -760,15 +763,15 @@ class TMBTest(unittest.TestCase):
         tmb = MySQL_DAO()
         results = json.loads(tmb.read_ship_pos_in_ts3_given_port("Fake Name", "Fake Port"))
         self.assertEqual(results, {"ports": [{
-                "Id": None,
-                "Name": None,
-                "Country": None,
-                "lat": None,
-                "long": None,
-                "MapView1_Id": None,
-                "MapView2_Id": None,
-                "MapView3_Id": None
-            }]})
+            "Id": None,
+            "Name": None,
+            "Country": None,
+            "lat": None,
+            "long": None,
+            "MapView1_Id": None,
+            "MapView2_Id": None,
+            "MapView3_Id": None
+        }]})
 
     def test_read_ship_pos_in_ts3_given_port_actual_2(self):
         """
@@ -779,7 +782,11 @@ class TMBTest(unittest.TestCase):
         tmb.delete_ais_messages()
         tmb.insert_ais_batch(self.batch)
         results = json.loads(tmb.read_ship_pos_in_ts3_given_port("Nyborg", "Denmark"))
-        self.assertEqual(results, {'ports': [{'Id': 381, 'Name': 'Nyborg', 'Country': 'Denmark', 'lat': 10.810833, 'long': 55.298889, 'MapView1_Id': 1, 'MapView2_Id': 5331, 'MapView3_Id': 53312}, {'Id': 4970, 'Name': 'Nyborg', 'Country': 'Denmark', 'lat': 10.790833, 'long': 55.306944, 'MapView1_Id': 1, 'MapView2_Id': 5331, 'MapView3_Id': 53312}]})
+        self.assertEqual(results, {'ports': [
+            {'Id': 381, 'Name': 'Nyborg', 'Country': 'Denmark', 'lat': 10.810833, 'long': 55.298889, 'MapView1_Id': 1,
+             'MapView2_Id': 5331, 'MapView3_Id': 53312},
+            {'Id': 4970, 'Name': 'Nyborg', 'Country': 'Denmark', 'lat': 10.790833, 'long': 55.306944, 'MapView1_Id': 1,
+             'MapView2_Id': 5331, 'MapView3_Id': 53312}]})
 
     def test_read_ship_pos_in_ts3_given_port_actual_3(self):
         """
@@ -790,7 +797,8 @@ class TMBTest(unittest.TestCase):
         tmb.delete_ais_messages()
         tmb.insert_ais_batch(self.batch)
         results = json.loads(tmb.read_ship_pos_in_ts3_given_port("Nysted", "Denmark"))
-        self.assertEqual(results, {'vessel': [{'MMSI': 219005465, 'lat': 54.572602, 'long': 11.929218, 'Name': 'NULL', 'IMO': 'NULL'}]})
+        self.assertEqual(results, {
+            'vessel': [{'MMSI': 219005465, 'lat': 54.572602, 'long': 11.929218, 'Name': 'NULL', 'IMO': 'NULL'}]})
 
     def test_select_most_recent_5_ship_positions_interface(self):
         """
@@ -837,7 +845,8 @@ class TMBTest(unittest.TestCase):
         tmb.delete_ais_messages()
         tmb.insert_ais_batch(self.batch)
         results = json.loads(tmb.select_most_recent_5_ship_positions(636092297))
-        self.assertEqual(results, {'MMSI': 636092297, 'Positions': [{'lat': 55.00316, 'long': 12.809015}], 'IMO': 9534298})
+        self.assertEqual(results,
+                         {'MMSI': 636092297, 'Positions': [{'lat': 55.00316, 'long': 12.809015}], 'IMO': 9534298})
 
     def test_select_most_recent_5_ship_positions_actual_5(self):
         """
@@ -858,7 +867,12 @@ class TMBTest(unittest.TestCase):
         tmb.insert_ais_message(json.loads(
             "{\"Timestamp\":\"2020-11-18T00:05:00.000Z\",\"Class\":\"Class A\",\"MMSI\":319904000,\"MsgType\":\"position_report\",\"Position\":{\"type\":\"Point\",\"coordinates\":[59.218332,12.351672]},\"Status\":\"Under way using engine\",\"RoT\":25.7,\"SoG\":10.8,\"CoG\":94.3,\"Heading\":97}"))
         results = json.loads(tmb.select_most_recent_5_ship_positions(319904000))
-        self.assertEqual(results, {'MMSI': 319904000, 'Positions': [{'lat': 59.218332, 'long': 12.351672}, {'lat': 58.218332, 'long': 11.361672}, {'lat': 57.218332, 'long': 9.378672}, {'lat': 56.218332, 'long': 12.771672}, {'lat': 55.218332, 'long': 13.391672}], 'IMO': None})
+        self.assertEqual(results, {'MMSI': 319904000, 'Positions': [{'lat': 59.218332, 'long': 12.351672},
+                                                                    {'lat': 58.218332, 'long': 11.361672},
+                                                                    {'lat': 57.218332, 'long': 9.378672},
+                                                                    {'lat': 56.218332, 'long': 12.771672},
+                                                                    {'lat': 55.218332, 'long': 13.391672}],
+                                   'IMO': None})
 
     def test_recent_ships_positions_headed_to_given_portId_interface_1(self):
         """
@@ -898,7 +912,9 @@ class TMBTest(unittest.TestCase):
             "{\"Timestamp\":\"2020-11-18T00:02:00.000Z\",\"Class\":\"Class A\",\"MMSI\":219005465,\"MsgType\":\"position_report\",\"Position\":{\"type\":\"Point\",\"coordinates\":[56.218332,12.771672]},\"Status\":\"Under way using engine\",\"RoT\":25.7,\"SoG\":10.8,\"CoG\":94.3,\"Heading\":97}"))
 
         results = json.loads(tmb.recent_ships_positions_headed_to_given_portId(381))
-        self.assertEqual(results, {'vessels': [{'MMSI': 219005465, 'lat': 56.218332, 'long': 12.771672, 'IMO': 1234567}, {'MMSI': 376503000, 'lat': 55.218332, 'long': 13.391672, 'IMO': 1234567}]})
+        self.assertEqual(results, {'vessels': [{'MMSI': 219005465, 'lat': 56.218332, 'long': 12.771672, 'IMO': 1234567},
+                                               {'MMSI': 376503000, 'lat': 55.218332, 'long': 13.391672,
+                                                'IMO': 1234567}]})
 
     def test_recent_ships_positions_headed_to_given_port_interface(self):
         """
@@ -909,7 +925,6 @@ class TMBTest(unittest.TestCase):
 
         results = json.loads(tmb.recent_ships_positions_headed_to_given_port("Nyborg", "Denmark"))
         self.assertEqual(results, {'ports': []})
-
 
     def test_recent_ships_positions_headed_to_given_port_actual_1(self):
         """
@@ -931,7 +946,10 @@ class TMBTest(unittest.TestCase):
             "{\"Timestamp\":\"2020-11-18T00:02:00.000Z\",\"Class\":\"Class A\",\"MMSI\":219005465,\"MsgType\":\"position_report\",\"Position\":{\"type\":\"Point\",\"coordinates\":[56.218332,12.771672]},\"Status\":\"Under way using engine\",\"RoT\":25.7,\"SoG\":10.8,\"CoG\":94.3,\"Heading\":97}"))
 
         results = json.loads(tmb.recent_ships_positions_headed_to_given_port("Nysted", "Denmark"))
-        self.assertEqual(results, {'vessels': [{'MMSI': 219005465, 'lat': 56.218332, 'long': 12.771672, 'Name': 'Not Johann', 'IMO': 1234567}, {'MMSI': 376503000, 'lat': 55.218332, 'long': 13.391672, 'Name': 'Not Johann', 'IMO': 1234567}]})
+        self.assertEqual(results, {
+            'vessels': [{'MMSI': 219005465, 'lat': 56.218332, 'long': 12.771672, 'Name': 'Not Johann', 'IMO': 1234567},
+                        {'MMSI': 376503000, 'lat': 55.218332, 'long': 13.391672, 'Name': 'Not Johann',
+                         'IMO': 1234567}]})
 
     def test_recent_ships_positions_headed_to_given_port_actual_2(self):
         """
@@ -941,7 +959,11 @@ class TMBTest(unittest.TestCase):
         tmb = MySQL_DAO()
 
         results = json.loads(tmb.recent_ships_positions_headed_to_given_port("Nyborg", "Denmark"))
-        self.assertEqual(results, {'ports': [{'Id': 381, 'Name': 'Nyborg', 'Country': 'Denmark', 'lat': 10.810833, 'long': 55.298889, 'MapView1_Id': 1, 'MapView2_Id': 5331, 'MapView3_Id': 53312}, {'Id': 4970, 'Name': 'Nyborg', 'Country': 'Denmark', 'lat': 10.790833, 'long': 55.306944, 'MapView1_Id': 1, 'MapView2_Id': 5331, 'MapView3_Id': 53312}]})
+        self.assertEqual(results, {'ports': [
+            {'Id': 381, 'Name': 'Nyborg', 'Country': 'Denmark', 'lat': 10.810833, 'long': 55.298889, 'MapView1_Id': 1,
+             'MapView2_Id': 5331, 'MapView3_Id': 53312},
+            {'Id': 4970, 'Name': 'Nyborg', 'Country': 'Denmark', 'lat': 10.790833, 'long': 55.306944, 'MapView1_Id': 1,
+             'MapView2_Id': 5331, 'MapView3_Id': 53312}]})
 
     def test_recent_ships_positions_headed_to_given_port_actual_3(self):
         """
@@ -967,24 +989,24 @@ class TMBTest(unittest.TestCase):
         """
         tmb = MySQL_DAO()
         results = tmb.create_tile_document([])
-        self.assertEqual(results, {
-            "Id": None,
-            "Name": None,
-            "Country": None,
-            "lat": None,
-            "long": None,
-            "MapView1_Id": None,
-            "MapView2_Id": None,
-            "MapView3_Id": None
-        })
+        self.assertEqual(results, {'Id': None, 'Name': None, 'LongitudeW': None, 'LatitudeS': None, 'LongitudeE': None,
+                                   'LatitudeN': None, 'Scale': None, 'RasterFile': None, 'ImageWidth': None,
+                                   'ImageHeight': None, 'ActualLongitudeW': None, 'ActualLatitudeS': None,
+                                   'ActualLongitudeE': None, 'ActualLatitudeN': None, 'ContainerMapView_Id': None})
 
     def test_create_tile_document_2(self):
         """
         Function `create_tile_document` correctly places values into a tile document.
         """
         tmb = MySQL_DAO()
-        results = tmb.create_tile_document([1, None, Decimal('7.000000'), Decimal('54.500000'), Decimal('13.000000'), Decimal('57.500000'), '1', 'ROOT.png', 2000, 2000, Decimal('7.000000'), Decimal('54.316140'), Decimal('13.000000'), Decimal('57.669343'), None])
-        self.assertEqual(results, {'Id': 1, 'Name': None, 'LongitudeW': Decimal('7.000000'), 'LatitudeS': Decimal('54.500000'), 'LongitudeE': Decimal('13.000000'), 'LatitudeN': Decimal('57.500000'), 'Scale': '1', 'RasterFile': 'ROOT.png', 'ImageWidth': 2000, 'ImageHeight': 2000, 'ActualLongitudeW': Decimal('7.000000'), 'ActualLatitudeS': Decimal('54.316140'), 'ActualLongitudeE': Decimal('13.000000'), 'ActualLatitudeN': Decimal('57.669343'), 'ContainerMapView_Id': None})
+        results = tmb.create_tile_document(
+            [1, None, Decimal('7.000000'), Decimal('54.500000'), Decimal('13.000000'), Decimal('57.500000'), '1',
+             'ROOT.png', 2000, 2000, Decimal('7.000000'), Decimal('54.316140'), Decimal('13.000000'),
+             Decimal('57.669343'), None])
+        self.assertEqual(results, {'Id': 1, 'Name': None, 'LongitudeW': 7.0, 'LatitudeS': 54.5, 'LongitudeE': 13.0,
+                                   'LatitudeN': 57.5, 'Scale': '1', 'RasterFile': 'ROOT.png', 'ImageWidth': 2000,
+                                   'ImageHeight': 2000, 'ActualLongitudeW': 7.0, 'ActualLatitudeS': 54.31614,
+                                   'ActualLongitudeE': 13.0, 'ActualLatitudeN': 57.669343, 'ContainerMapView_Id': None})
 
     def test_given_tile_find_contained_tiles_interface(self):
         """
@@ -1012,7 +1034,23 @@ class TMBTest(unittest.TestCase):
         tmb = MySQL_DAO()
 
         results = json.loads(tmb.given_tile_find_contained_tiles(5036))
-        self.assertEqual(results, {'tiles': [{'Id': 50361, 'Name': '38F71', 'LongitudeW': 7.0, 'LatitudeS': 54.75, 'LongitudeE': 7.5, 'LatitudeN': 55.0, 'Scale': '3', 'RasterFile': '38F71.png', 'ImageWidth': 2000, 'ImageHeight': 2000, 'ActualLongitudeW': 7.0, 'ActualLatitudeS': 54.731097, 'ActualLongitudeE': 7.5, 'ActualLatitudeN': 55.018777, 'ContainerMapView_Id': 5036}, {'Id': 50362, 'Name': '38F72', 'LongitudeW': 7.5, 'LatitudeS': 54.75, 'LongitudeE': 8.0, 'LatitudeN': 55.0, 'Scale': '3', 'RasterFile': '38F72.png', 'ImageWidth': 2000, 'ImageHeight': 2000, 'ActualLongitudeW': 7.5, 'ActualLatitudeS': 54.731097, 'ActualLongitudeE': 8.0, 'ActualLatitudeN': 55.018777, 'ContainerMapView_Id': 5036}, {'Id': 50363, 'Name': '38F73', 'LongitudeW': 7.0, 'LatitudeS': 54.5, 'LongitudeE': 7.5, 'LatitudeN': 54.75, 'Scale': '3', 'RasterFile': '38F73.png', 'ImageWidth': 2000, 'ImageHeight': 2000, 'ActualLongitudeW': 7.0, 'ActualLatitudeS': 54.480204, 'ActualLongitudeE': 7.5,'ActualLatitudeN': 54.769665, 'ContainerMapView_Id': 5036}, {'Id': 50364, 'Name': '38F74', 'LongitudeW': 7.5, 'LatitudeS': 54.5, 'LongitudeE': 8.0, 'LatitudeN': 54.75, 'Scale': '3', 'RasterFile': '38F74.png', 'ImageWidth': 2000, 'ImageHeight': 2000, 'ActualLongitudeW': 7.5, 'ActualLatitudeS': 54.480204, 'ActualLongitudeE': 8.0, 'ActualLatitudeN': 54.769665, 'ContainerMapView_Id': 5036}]})
+        self.assertEqual(results, {'tiles': [
+            {'Id': 50361, 'Name': '38F71', 'LongitudeW': 7.0, 'LatitudeS': 54.75, 'LongitudeE': 7.5, 'LatitudeN': 55.0,
+             'Scale': '3', 'RasterFile': '38F71.png', 'ImageWidth': 2000, 'ImageHeight': 2000, 'ActualLongitudeW': 7.0,
+             'ActualLatitudeS': 54.731097, 'ActualLongitudeE': 7.5, 'ActualLatitudeN': 55.018777,
+             'ContainerMapView_Id': 5036},
+            {'Id': 50362, 'Name': '38F72', 'LongitudeW': 7.5, 'LatitudeS': 54.75, 'LongitudeE': 8.0, 'LatitudeN': 55.0,
+             'Scale': '3', 'RasterFile': '38F72.png', 'ImageWidth': 2000, 'ImageHeight': 2000, 'ActualLongitudeW': 7.5,
+             'ActualLatitudeS': 54.731097, 'ActualLongitudeE': 8.0, 'ActualLatitudeN': 55.018777,
+             'ContainerMapView_Id': 5036},
+            {'Id': 50363, 'Name': '38F73', 'LongitudeW': 7.0, 'LatitudeS': 54.5, 'LongitudeE': 7.5, 'LatitudeN': 54.75,
+             'Scale': '3', 'RasterFile': '38F73.png', 'ImageWidth': 2000, 'ImageHeight': 2000, 'ActualLongitudeW': 7.0,
+             'ActualLatitudeS': 54.480204, 'ActualLongitudeE': 7.5, 'ActualLatitudeN': 54.769665,
+             'ContainerMapView_Id': 5036},
+            {'Id': 50364, 'Name': '38F74', 'LongitudeW': 7.5, 'LatitudeS': 54.5, 'LongitudeE': 8.0, 'LatitudeN': 54.75,
+             'Scale': '3', 'RasterFile': '38F74.png', 'ImageWidth': 2000, 'ImageHeight': 2000, 'ActualLongitudeW': 7.5,
+             'ActualLatitudeS': 54.480204, 'ActualLongitudeE': 8.0, 'ActualLatitudeN': 54.769665,
+             'ContainerMapView_Id': 5036}]})
 
     def test_given_tile_id_get_tile_interface(self):
         """
@@ -1020,17 +1058,68 @@ class TMBTest(unittest.TestCase):
         """
         tmb = MySQL_DAO(True)
 
-        results = json.loads(tmb.given_tile_id_get_tile(50361))
+        results = tmb.given_tile_id_get_tile(50361)
         self.assertEqual(results, 50361)
 
-    def test_given_tile_id_get_tile_actual(self):
+    def test_given_tile_id_get_tile_actual_1(self):
         """
-        Function `given_tile_id_get_tile` exists and takes in a tile Id.
+        Function `given_tile_id_get_tile` returns -1 when an unknown map tile id is passed.
         """
         tmb = MySQL_DAO()
 
-        results = json.loads(tmb.given_tile_id_get_tile(50361))
-        self.assertEqual(results, 50361)
+        results = tmb.given_tile_id_get_tile(8675309)
+        self.assertEqual(results, -1)
+
+    def test_given_tile_id_get_tile_actual_2(self):
+        """
+        Function `given_tile_id_get_tile` returns the file of the map tile id.
+        """
+        tmb = MySQL_DAO()
+
+        results = tmb.given_tile_id_get_tile(50361)
+
+        path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'denmark_tiles', '38F71.png'))
+        with open(path, 'rb') as f:
+            file_data = base64.b64encode(f.read())
+            self.assertEqual(results, file_data)
+
+    def test_get_tile_1(self):
+        """
+        Function `get_tile` returns the calculated boundaries of a tile at scale 1.
+        """
+        tmb = MySQL_DAO()
+
+        results = tmb.get_tile(1, 11.47914, 54.519373)
+
+        self.assertEqual(results, {'south': 54.5, 'north': 57.5, 'west': 7.0, 'east': 13.0})
+
+    def test_get_tile_2(self):
+        """
+        Function `get_tile` returns the calculated boundaries of a tile at scale 2.
+        """
+        tmb = MySQL_DAO()
+
+        results = tmb.get_tile(2, 11.47914, 54.519373)
+
+        self.assertEqual(results, {'south': 54.5, 'north': 55.0, 'west': 11, 'east': 12})
+
+    def test_get_tile_3(self):
+        """
+        Function `get_tile` returns the calculated boundaries of a tile at scale 2.
+        """
+        tmb = MySQL_DAO()
+
+        results = tmb.get_tile(3, 11.47914, 54.519373)
+
+        self.assertEqual(results, {'south': 54.5, 'north': 54.75, 'west': 11.0, 'east': 11.5})
+
 
 if __name__ == '__main__':
-    unittest.main()
+    path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data', 'Milestone_4_Dump.mysql'))
+    config_file = 'connection_data.conf'
+    config = configparser.ConfigParser()
+    config.read(config_file)
+
+    os.system('cat ' + path + ' | mysql -u ' + config['SQL']['user'] + ' --password=' + config['SQL']['password'])
+
+    unittest.main(verbosity=2)
