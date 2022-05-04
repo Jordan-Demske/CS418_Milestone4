@@ -10,6 +10,10 @@ import configparser
 
 
 class MySQLConnectionManager:
+    """
+    Class MySQLConnectionManager
+    Creates the connection based on a config file
+    """
     config_file = 'connection_data.conf'
 
     def __init__(self):
@@ -29,7 +33,13 @@ class MySQLConnectionManager:
 
 
 class MySQLCursorManager:
+    """
+    Class MySQLCursorManager
+    Handles the connection's cursor
 
+    :param cnx: The Connection
+    :type cnx: MySQLConnectionManager
+    """
     def __init__(self, cnx):
         self.cursor = cnx.cursor(buffered=True)
 
@@ -41,6 +51,13 @@ class MySQLCursorManager:
 
 
 class MySQL_DAO:
+    """
+    Class DAO
+    The DAO part of the TMB
+
+    :param is_stub: Optional, whether the DAO is a test stub or not
+    :type is_stub: bool
+    """
     ais_parameters = ['Class', 'MMSI']
     static_data_parameters = ['CallSign', 'Name', 'VesselType', 'CargoType', 'Length', 'Breadth', 'Draught',
                               'Destination', 'DestinationId']
@@ -51,6 +68,14 @@ class MySQL_DAO:
         self.is_stub = stub
 
     def format_ais_message(self, msg):
+        """
+        Formats an AIS Message to show the Class, MMSI, IMO, and Timestamp.
+
+        :param msg: a dict consisting of a list of attributes for the message
+        :type msg: dict
+        :return: object {'Class': ... , 'MMSI': ... , } describing the AIS Message
+        :rtype: dict
+        """
         if "Timestamp" in msg:
             date = dateutil.parser.isoparse(msg['Timestamp'])
             timestamp = date.strftime("%Y-%m-%d %H:%M:%S")
@@ -65,6 +90,14 @@ class MySQL_DAO:
         return msg
 
     def format_position_report(self, msg):
+        """
+        Formats a Position Report to show the RoT, SoG, CoG, Heading, Status, and Position.
+
+        :param msg: a dict consisting of a list of attributes for the report
+        :type msg: dict
+        :return: object {'RoT': ... , 'SoG': ... , } describing the Position Report
+        :rtype: dict
+        """
         if "Position" in msg and msg["Position"] is not None:
             for parameter in self.position_parameters:
                 if msg['Position'] != {}:
@@ -84,6 +117,15 @@ class MySQL_DAO:
         return msg
 
     def format_static_data(self, msg):
+        """
+        Formats a Static Data message to show the CallSign, Name, VesselType, CargoType, Length, Breadth, Draught,
+        Destination, DestinationId, and ETA.
+
+        :param msg: a dict consisting of a list of attributes for the static data message
+        :type msg: dict
+        :return: object {'CallSign': ... , 'Name': ... , } describing the Static Data
+        :rtype: dict
+        """
         if 'ETA' in msg:
             date = dateutil.parser.isoparse(msg['ETA'])
             msg['ETA'] = date.strftime("%Y-%m-%d %H:%M:%S")
@@ -95,6 +137,16 @@ class MySQL_DAO:
         return msg
 
     def insert_ais_batch(self, json_data):
+        """
+        Query 1, Priority 1
+        From a set of JSON data, inserts every AIS Message into the database and returns the number of insertions.
+
+        :param msg: a json string
+        :type msg: str
+        :raises [BaseException]: If the JSON cannot be loaded correctly
+        :return: JSON string containing {'inserts': ...} with the count of insertions
+        :rtype: str
+        """
         count = 0
         try:
             data = json.loads(json_data)
@@ -111,6 +163,16 @@ class MySQL_DAO:
         return json.dumps({"inserts": count})
 
     def insert_ais_message(self, msg):
+        """
+        Query 2, Priority 2
+        From a dictionary filled with message values, insert the values into the database and return a success message.
+
+        :param msg: A dictionary of values to insert
+        :type msg: dict
+        :raises [BaseException]: If the connection fails
+        :return: JSON string containing {'success': ...} with either 1 or 0 depending on the success of the insert
+        :rtype: str
+        """
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:
@@ -127,7 +189,7 @@ class MySQL_DAO:
                         return json.dumps({"success": 0})
 
                     if "MsgType" not in msg:
-                        return
+                        return json.dumps({"success": 0})
 
                     if msg['MsgType'] == 'position_report':
                         msg = self.format_position_report(msg)
@@ -187,6 +249,13 @@ class MySQL_DAO:
             return json.dumps({"success": 0})
 
     def delete_ais_messages(self):
+        """
+        Deletes all AIS Messages. Used for testing.
+
+        :raises [BaseException]: If the connection fails
+        :return: JSON string containing {'success': ...} with either 1 or 0 depending on the success of the insert
+        :rtype: str
+        """
         if self.is_stub:
             return json.dumps({"success": 1})
         try:
@@ -211,6 +280,14 @@ class MySQL_DAO:
                 print(err)
 
     def delete_old_ais_messages(self):
+        """
+        Query 3, Priority 1
+        Deletes all AIS Messages older than five minutes.
+
+        :raises [BaseException]: If the connection fails
+        :return: JSON string containing {'deletions': ...} with the number of deletions
+        :rtype: str
+        """
         if self.is_stub:
             return json.dumps({"deletions": 0})
         try:
@@ -235,6 +312,15 @@ class MySQL_DAO:
                 print(err)
 
     def get_vessel_imo(self, mmsi):
+        """
+        Retrieves the permanent data's IMO for a ship with a given MMSI
+
+        :param mmsi: The vessel MMSI
+        :type msg: int
+        :raises [BaseException]: If the connection fails
+        :return: The IMO
+        :rtype: int
+        """
         if self.is_stub:
             return 1234567
         try:
@@ -256,6 +342,15 @@ class MySQL_DAO:
                 print(err)
 
     def get_vessel_name(self, mmsi):
+        """
+        Returns the Name of a vessel found in the permanent data based on a given MMSI
+
+        :param mmsi: The Vessel MMSI
+        :type msg: int
+        :raises [BaseException]: If the connection fails
+        :return: The vessel name
+        :rtype: str
+        """
         if self.is_stub:
             return "Fake Name"
         try:
@@ -277,6 +372,16 @@ class MySQL_DAO:
                 print(err)
 
     def get_optional_vessel_data(self, mmsi):
+        """
+        From a vessel's MMSI, return the IMO and name first from testing the transient data and then relying on the
+        permanent data if no such transient data exists.
+
+        :param mmsi: A dictionary of values to insert
+        :type mmsi: dict
+        :raises [BaseException]: If the connection fails
+        :return: List consisting of the IMO followed by the name
+        :rtype: list
+        """
         if self.is_stub:
             return [None, None]
         try:
@@ -307,6 +412,14 @@ class MySQL_DAO:
                 print(err)
 
     def create_vessel_document(self, vessel):
+        """
+        From a list of vessel values, return a dictionary with the MMSI, Latitude, Longitude, Name, and IMO
+
+        :param vessel: A list of vessel values
+        :type vessel: list
+        :return: Dictionary containing {'MMSI': ..., 'lat': ...,} with the values of the vessel
+        :rtype: dict
+        """
         if len(vessel) < 3:
             return {
                 "MMSI": None,
@@ -333,6 +446,14 @@ class MySQL_DAO:
         }
 
     def select_all_recent_positions(self):
+        """
+        Query 4, Priority 1
+        Select all recent ship positions for each vessel MMSI
+
+        :raises [BaseException]: If the connection fails
+        :return: A list of ship documents formed from create_vessel_document()
+        :rtype: list
+        """
         if self.is_stub:
             return json.dumps({"vessels": [{
                 "MMSI": None,
@@ -365,6 +486,16 @@ class MySQL_DAO:
                 print(err)
 
     def select_most_recent_from_mmsi(self, mmsi):
+        """
+        Query 5, Priority 1
+        From an MMSI, select that vessel's most recent position.
+
+        :param mmsi: The vessel MMSI
+        :type mmsi: int
+        :raises [BaseException]: If the connection fails
+        :return: A position document of the form {'MMSI': ..., 'lat': ..., 'long': ..., 'IMO': ...}
+        :rtype: dict
+        """
         if self.is_stub:
             return json.dumps({"MMSI": None, "lat": None, "long": None, "IMO": None})
         try:
@@ -394,6 +525,20 @@ class MySQL_DAO:
                 print(err)
 
     def read_vessel_information(self, mmsi, imo=None, name=None):
+        """
+        Query 6, Priority 1
+        From a vessel's MMSI and optional values IMO and Name, returns a vessel document matching the values given.
+
+        :param mmsi: Vessel MMSI
+        :type mmsi: int
+        :param imo: Optional, Vessel IMO
+        :type imo: int
+        :param name: Optional, A dictionary of values to insert
+        :type name: str
+        :raises [BaseException]: If the connection fails
+        :return: A vessel document formed with create_vessel_document()
+        :rtype: dict
+        """
         if self.is_stub:
             return json.dumps({"MMSI": None, "lat": None, "long": None, "IMO": None, "Name": None})
         try:
@@ -475,6 +620,16 @@ class MySQL_DAO:
                 print(err)
 
     def select_most_recent_5_ship_positions(self, mmsi):
+        """
+        Query 10, Priority 3
+        From a vessel MMSI, list the 5 most recent positions.
+
+        :param mmsi: A vessel MMSI
+        :type mmsi: int
+        :raises [BaseException]: If the connection fails
+        :return: JSON string containing
+        :rtype: str
+        """
         if self.is_stub:
             return json.dumps({"MMSI": mmsi, "Positions": None, 'IMO': None})
         try:
