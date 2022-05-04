@@ -961,6 +961,76 @@ class TMBTest(unittest.TestCase):
         results = json.loads(tmb.recent_ships_positions_headed_to_given_port("Dansk", "Denmark"))
         self.assertEqual(results, {'vessels': []})
 
+    def test_create_tile_document_1(self):
+        """
+        Function `create_tile_document` fails nicely when given an array that is too short.
+        """
+        tmb = MySQL_DAO()
+        results = tmb.create_tile_document([])
+        self.assertEqual(results, {
+            "Id": None,
+            "Name": None,
+            "Country": None,
+            "lat": None,
+            "long": None,
+            "MapView1_Id": None,
+            "MapView2_Id": None,
+            "MapView3_Id": None
+        })
+
+    def test_create_tile_document_2(self):
+        """
+        Function `create_tile_document` correctly places values into a tile document.
+        """
+        tmb = MySQL_DAO()
+        results = tmb.create_tile_document([1, None, Decimal('7.000000'), Decimal('54.500000'), Decimal('13.000000'), Decimal('57.500000'), '1', 'ROOT.png', 2000, 2000, Decimal('7.000000'), Decimal('54.316140'), Decimal('13.000000'), Decimal('57.669343'), None])
+        self.assertEqual(results, {'Id': 1, 'Name': None, 'LongitudeW': Decimal('7.000000'), 'LatitudeS': Decimal('54.500000'), 'LongitudeE': Decimal('13.000000'), 'LatitudeN': Decimal('57.500000'), 'Scale': '1', 'RasterFile': 'ROOT.png', 'ImageWidth': 2000, 'ImageHeight': 2000, 'ActualLongitudeW': Decimal('7.000000'), 'ActualLatitudeS': Decimal('54.316140'), 'ActualLongitudeE': Decimal('13.000000'), 'ActualLatitudeN': Decimal('57.669343'), 'ContainerMapView_Id': None})
+
+    def test_given_tile_find_contained_tiles_interface(self):
+        """
+        Function `given_tile_find_contained_tiles` exists, takes in a tile id, and returns a list of tiles.
+        """
+        tmb = MySQL_DAO(True)
+
+        results = json.loads(tmb.given_tile_find_contained_tiles(5036))
+        self.assertEqual(results, {'tiles': []})
+
+    def test_given_tile_find_contained_tiles_actual_1(self):
+        """
+        Function `given_tile_find_contained_tiles` nicely fails when given a wrong tile Id.
+        """
+        tmb = MySQL_DAO()
+
+        results = json.loads(tmb.given_tile_find_contained_tiles(9999999))
+        self.assertEqual(results, {'tiles': []})
+
+    def test_given_tile_find_contained_tiles_actual_2(self):
+        """
+        Function `given_tile_find_contained_tiles` correctly finds the four tiles that the tile Id passed in contains
+        and lists them in an array.
+        """
+        tmb = MySQL_DAO()
+
+        results = json.loads(tmb.given_tile_find_contained_tiles(5036))
+        self.assertEqual(results, {'tiles': [{'Id': 50361, 'Name': '38F71', 'LongitudeW': 7.0, 'LatitudeS': 54.75, 'LongitudeE': 7.5, 'LatitudeN': 55.0, 'Scale': '3', 'RasterFile': '38F71.png', 'ImageWidth': 2000, 'ImageHeight': 2000, 'ActualLongitudeW': 7.0, 'ActualLatitudeS': 54.731097, 'ActualLongitudeE': 7.5, 'ActualLatitudeN': 55.018777, 'ContainerMapView_Id': 5036}, {'Id': 50362, 'Name': '38F72', 'LongitudeW': 7.5, 'LatitudeS': 54.75, 'LongitudeE': 8.0, 'LatitudeN': 55.0, 'Scale': '3', 'RasterFile': '38F72.png', 'ImageWidth': 2000, 'ImageHeight': 2000, 'ActualLongitudeW': 7.5, 'ActualLatitudeS': 54.731097, 'ActualLongitudeE': 8.0, 'ActualLatitudeN': 55.018777, 'ContainerMapView_Id': 5036}, {'Id': 50363, 'Name': '38F73', 'LongitudeW': 7.0, 'LatitudeS': 54.5, 'LongitudeE': 7.5, 'LatitudeN': 54.75, 'Scale': '3', 'RasterFile': '38F73.png', 'ImageWidth': 2000, 'ImageHeight': 2000, 'ActualLongitudeW': 7.0, 'ActualLatitudeS': 54.480204, 'ActualLongitudeE': 7.5,'ActualLatitudeN': 54.769665, 'ContainerMapView_Id': 5036}, {'Id': 50364, 'Name': '38F74', 'LongitudeW': 7.5, 'LatitudeS': 54.5, 'LongitudeE': 8.0, 'LatitudeN': 54.75, 'Scale': '3', 'RasterFile': '38F74.png', 'ImageWidth': 2000, 'ImageHeight': 2000, 'ActualLongitudeW': 7.5, 'ActualLatitudeS': 54.480204, 'ActualLongitudeE': 8.0, 'ActualLatitudeN': 54.769665, 'ContainerMapView_Id': 5036}]})
+
+    def test_given_tile_id_get_tile_interface(self):
+        """
+        Function `given_tile_id_get_tile` exists and takes in a tile Id.
+        """
+        tmb = MySQL_DAO(True)
+
+        results = json.loads(tmb.given_tile_id_get_tile(50361))
+        self.assertEqual(results, 50361)
+
+    def test_given_tile_id_get_tile_actual(self):
+        """
+        Function `given_tile_id_get_tile` exists and takes in a tile Id.
+        """
+        tmb = MySQL_DAO()
+
+        results = json.loads(tmb.given_tile_id_get_tile(50361))
+        self.assertEqual(results, 50361)
 
 if __name__ == '__main__':
     unittest.main()

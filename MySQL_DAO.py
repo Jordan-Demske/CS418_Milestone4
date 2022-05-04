@@ -1,6 +1,6 @@
 import json
 import math
-
+import os
 import mysql.connector
 from mysql.connector import errorcode
 import dateutil.parser
@@ -730,6 +730,92 @@ class MySQL_DAO:
                         return self.read_all_matching_ports(port_name, country)
                     else:
                         return self.select_all_recent_in_tile(id[0][0])
+
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+                print("Something is wrong with your user name or password")
+            elif err.errno == errorcode.ER_BAD_DB_ERROR:
+                print("Database does not exist")
+            else:
+                print(err)
+
+    def create_tile_document(self, tile):
+        if len(tile) < 15:
+            return {
+                "Id": None,
+                "Name": None,
+                "LongitudeW": None,
+                "LatitudeS": None,
+                "LongitudeE": None,
+                "LatitudeN": None,
+                "Scale": None,
+                "RasterFile": None,
+                "ImageWidth": None,
+                "ImageHeight": None,
+                "ActualLongitudeW": None,
+                "ActualLatitudeS": None,
+                "ActualLongitudeE": None,
+                "ActualLatitudeN": None,
+                "ContainerMapView_Id": None
+            }
+        return {
+                "Id": tile[0],
+                "Name": tile[1],
+                "LongitudeW": float(tile[2]),
+                "LatitudeS": float(tile[3]),
+                "LongitudeE": float(tile[4]),
+                "LatitudeN": float(tile[5]),
+                "Scale": tile[6],
+                "RasterFile": tile[7],
+                "ImageWidth": tile[8],
+                "ImageHeight": tile[9],
+                "ActualLongitudeW": float(tile[10]),
+                "ActualLatitudeS": float(tile[11]),
+                "ActualLongitudeE": float(tile[12]),
+                "ActualLatitudeN": float(tile[13]),
+                "ContainerMapView_Id": tile[14]
+            }
+
+    def given_tile_find_contained_tiles(self, map_tile_id):
+        if self.is_stub:
+            return json.dumps({"tiles": []})
+        try:
+            with MySQLConnectionManager() as con:
+                with MySQLCursorManager(con) as cursor:
+                    cursor.execute("""SELECT map3.*
+                                      FROM MAP_VIEW as map3, MAP_VIEW as map2
+                                      WHERE map2.Id= %s AND map3.ContainerMapView_Id=map2.Id;""", (map_tile_id,))
+                    rows = cursor.fetchall()
+                    tiles = []
+                    if cursor.rowcount > 0:
+                        for row in rows:
+                            tile = self.create_tile_document(row)
+                            tiles.append(tile)
+                    return json.dumps({"tiles": tiles})
+
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+                print("Something is wrong with your user name or password")
+            elif err.errno == errorcode.ER_BAD_DB_ERROR:
+                print("Database does not exist")
+            else:
+                print(err)
+
+    def given_tile_id_get_tile(self, map_tile_id):
+        if self.is_stub:
+            return map_tile_id
+        try:
+            with MySQLConnectionManager() as con:
+                with MySQLCursorManager(con) as cursor:
+                    cursor.execute("""SELECT MAP_VIEW.RasterFile
+                                       FROM MAP_VIEW
+                                       WHERE MAP_VIEW.Id = %s""", (map_tile_id,))
+                    tile_image = cursor.fetchone()[0]
+                    path = os.path.relpath('..\\data\\denmark_tiles\\' + tile_image, os.path.dirname(__file__))
+                    f = open(path, 'rb')
+                    file_data = f.read()
+                    f.close()
+                    return file_data
 
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
