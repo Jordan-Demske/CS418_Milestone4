@@ -66,7 +66,12 @@ class MySQL_DAO:
     def format_position_report(self, msg):
         if "Position" in msg and msg["Position"] is not None:
             for parameter in self.position_parameters:
-                if parameter not in msg['Position']:
+                if msg['Position'] != {}:
+                    if type(msg['Position']) is not dict:
+                        msg['Position'] = None
+                    elif parameter not in msg['Position']:
+                        msg['Position'] = None
+                else:
                     msg['Position'] = None
         else:
             msg['Position'] = None
@@ -93,10 +98,8 @@ class MySQL_DAO:
         try:
             data = json.loads(json_data)
         except Exception as e:
-            print(e)
             return -1
         if not isinstance(data, list):
-            print("Input of `insert_ais_batch` must be a JSON array of message objects.")
             return -1
         if self.is_stub:
             return json.dumps({"inserts": len(data)})
@@ -183,21 +186,20 @@ class MySQL_DAO:
             return json.dumps({"success": 0})
 
     def delete_ais_messages(self):
-        
         if self.is_stub:
-            return True
+            return json.dumps({"success": 1})
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:
                     cursor.execute(
-                        """TRUNCATE TABLE POSITION_REPORT;""")
+                        """DELETE FROM POSITION_REPORT;""")
                     cursor.execute(
-                        """TRUNCATE TABLE STATIC_DATA;""")
+                        """DELETE FROM STATIC_DATA;""")
                     cursor.execute(
-                        """TRUNCATE TABLE AIS_MESSAGE;""")
-                    deletions = cursor.rowcount
+                        """DELETE FROM AIS_MESSAGE;""")
+                    cursor.execute("""ALTER TABLE AIS_MESSAGE AUTO_INCREMENT = 1;""")
                     con.commit()
-                    return json.dumps({"deletions": deletions})
+                    return json.dumps({"success": 1})
 
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
@@ -209,7 +211,7 @@ class MySQL_DAO:
 
     def delete_old_ais_messages(self):
         if self.is_stub:
-            return True
+            return json.dumps({"deletions": 0})
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:
@@ -232,6 +234,8 @@ class MySQL_DAO:
                 print(err)
 
     def get_vessel_imo(self, mmsi):
+        if self.is_stub:
+            return 1234567
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:
@@ -251,6 +255,8 @@ class MySQL_DAO:
                 print(err)
 
     def get_vessel_name(self, mmsi):
+        if self.is_stub:
+            return "Fake Name"
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:
@@ -270,12 +276,14 @@ class MySQL_DAO:
                 print(err)
 
     def get_optional_vessel_data(self, mmsi):
+        if self.is_stub:
+            return [None, None]
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:
                     data = ["NULL", "NULL"]
                     cursor.execute(
-                        """SELECT Name, AISIMO FROM STATIC_DATA, AIS_MESSAGE WHERE AISMessage_Id = Id AND MMSI = %s ORDER BY Timestamp DESC;""",
+                        """SELECT Name, AISIMO FROM STATIC_DATA, AIS_MESSAGE WHERE AISMessage_Id = Id AND MMSI = %s ORDER BY Timestamp ASC;""",
                         (mmsi,))
                     rows = cursor.fetchall()
                     for row in rows:
@@ -298,18 +306,40 @@ class MySQL_DAO:
                 print(err)
 
     def create_vessel_document(self, vessel):
+        if len(vessel) < 3:
+            return {
+                "MMSI": None,
+                "lat": None,
+                "long": None,
+                "Name": None,
+                "IMO": None
+            }
+        if self.is_stub:
+            return {
+                "MMSI": vessel[0],
+                "lat": float(vessel[1]),
+                "long": float(vessel[2]),
+                "Name": None,
+                "IMO": None
+            }
         optional_data = self.get_optional_vessel_data(vessel[0])
         return {
             "MMSI": vessel[0],
-            "Latitude": float(vessel[1]),
-            "Longitude": float(vessel[2]),
+            "lat": float(vessel[1]),
+            "long": float(vessel[2]),
             "Name": optional_data[0],
             "IMO": optional_data[1]
         }
 
     def select_all_recent_positions(self):
         if self.is_stub:
-            return True
+            return json.dumps({"vessels": [{
+                "MMSI": None,
+                "lat": None,
+                "long": None,
+                "Name": None,
+                "IMO": None
+            }]})
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:
@@ -335,7 +365,7 @@ class MySQL_DAO:
 
     def select_most_recent_from_mmsi(self, mmsi):
         if self.is_stub:
-            return True
+            return json.dumps({"MMSI": None, "lat": None, "long": None, "IMO": None})
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:
@@ -346,7 +376,7 @@ class MySQL_DAO:
                         return json.dumps({})
                     pos = cursor.fetchall()[0]
                     cursor.execute(
-                        """SELECT Vessel_IMO, MMSI, Timestamp FROM AIS_MESSAGE WHERE MMSI = %s ORDER BY Timestamp DESC;""",
+                        """SELECT Vessel_IMO, MMSI, Timestamp FROM AIS_MESSAGE WHERE MMSI = %s AND Vessel_IMO IS NOT NULL ORDER BY Timestamp DESC;""",
                         (mmsi,))
                     stat = cursor.fetchall()
                     if cursor.rowcount == 0:
@@ -363,29 +393,77 @@ class MySQL_DAO:
                 print(err)
 
     def read_vessel_information(self, mmsi, imo=None, name=None):
+        if self.is_stub:
+            return json.dumps({"MMSI": None, "lat": None, "long": None, "IMO": None, "Name": None})
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:
                     cursor.execute("""SELECT t.MMSI, pos.Latitude, pos.Longitude, t.Vessel_IMO
                                       FROM (SELECT Id, MMSI, Vessel_IMO, Timestamp from AIS_MESSAGE WHERE MMSI = %s ORDER BY Timestamp DESC) t, POSITION_REPORT as pos
-                                      WHERE t.Id = pos.AISMessage_Id;""", mmsi)
+                                      WHERE t.Id = pos.AISMessage_Id;""", (mmsi,))
                     pos = cursor.fetchone()
-                    if (imo is not None):
+                    if cursor.rowcount == 0:
+                        pos = [None, None, None]
+                    else:
+                        lat = pos[1]
+                        long = pos[2]
+                        pos = [None, None, None]
+                        pos[1] = float(lat)
+                        pos[2] = float(long)
+
+                    if imo is not None:
                         cursor.execute(
                             """SELECT Vessel_IMO, MMSI, Timestamp FROM AIS_MESSAGE WHERE MMSI = %s AND VESSEL_IMO = %s ORDER BY Timestamp DESC;""",
                             (mmsi, imo,))
                         imodata = cursor.fetchone()
-                        if imodata is None:
-                            return json.dumps({})
-                    if (name is not None):
+                        if cursor.rowcount == 0:
+                            return json.dumps({"MMSI": None, "lat": None, "long": None, "IMO": None, "Name": None})
+                        else:
+                            imodata = imodata[0]
+                    else:
                         cursor.execute(
-                            """SELECT Name FROM STATIC_DATA WHERE Name = %s ORDER BY Timestamp DESC;""",
-                            (name,))
-                        static = cursor.fetchone()
-                        if static is None:
-                            return json.dumps({})
+                            """SELECT Vessel_IMO, MMSI, Timestamp FROM AIS_MESSAGE WHERE MMSI = %s AND Vessel_IMO IS NOT NULL ORDER BY Timestamp DESC;""",
+                            (mmsi,))
+                        imodata = cursor.fetchone()
+                        if cursor.rowcount == 0:
+                            cursor.execute(
+                                """SELECT IMO FROM VESSEL WHERE MMSI = %s;""",
+                                (mmsi,))
+                            imodata = cursor.fetchone()
+                            if cursor.rowcount == 0:
+                                imodata = None
+                            else:
+                                imodata = imodata[0]
+                        else:
+                            imodata = imodata[0]
 
-                    return json.dumps({"MMSI": pos[0], "lat": pos[1], "long": pos[2], "IMO": imo, "Name": name})
+                    if name is not None:
+                        cursor.execute(
+                            """SELECT Name FROM STATIC_DATA, AIS_MESSAGE WHERE Name = %s AND MMSI = %s AND AISMessage_Id = Id ORDER BY Timestamp DESC;""",
+                            (name, mmsi))
+                        namedata = cursor.fetchone()
+                        if cursor.rowcount == 0:
+                            return json.dumps({"MMSI": None, "lat": None, "long": None, "IMO": None, "Name": None})
+                        else:
+                            namedata = namedata[0]
+                    else:
+                        cursor.execute(
+                            """SELECT Name FROM STATIC_DATA, AIS_MESSAGE WHERE MMSI = %s AND AISMessage_Id = Id ORDER BY Timestamp DESC;""",
+                            (mmsi,))
+                        namedata = cursor.fetchone()
+                        if cursor.rowcount == 0:
+                            cursor.execute(
+                                """SELECT Name FROM VESSEL WHERE MMSI = %s;""",
+                                (mmsi,))
+                            namedata = cursor.fetchone()
+                            if cursor.rowcount == 0:
+                                namedata = None
+                            else:
+                                namedata = namedata[0]
+                        else:
+                            namedata = namedata[0]
+
+                    return json.dumps({"MMSI": mmsi, "lat": pos[1], "long": pos[2], "IMO": imodata, "Name": namedata})
 
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
@@ -395,18 +473,129 @@ class MySQL_DAO:
             else:
                 print(err)
 
-    def select_most_recent_5_ship_positions(self):
+    def select_most_recent_5_ship_positions(self, mmsi):
+        if self.is_stub:
+            return json.dumps({"MMSI": mmsi, "Positions": None, 'IMO': None})
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:
-                    # Most recent 5 ship positions
                     cursor.execute("""SELECT t.MMSI, pos.Latitude, pos.Longitude, t.Vessel_IMO
-                                      FROM (SELECT Id, MMSI, Vessel_IMO, Timestamp FROM AIS_MESSAGE WHERE MMSI = "265866000" ORDER BY Timestamp DESC LIMIT 5) t, POSITION_REPORT as pos
-                                      WHERE t.Id = pos.AISMessage_Id;""")
-                    rs = cursor.fetchall()
+                                      FROM (SELECT Id, MMSI, Vessel_IMO, Timestamp FROM AIS_MESSAGE WHERE MMSI = %s ORDER BY Timestamp DESC LIMIT 5) t, POSITION_REPORT as pos
+                                      WHERE t.Id = pos.AISMessage_Id;""", (mmsi,))
+                    pos = cursor.fetchall()
+                    if cursor.rowcount == 0:
+                        return json.dumps({"MMSI": mmsi, "Positions": None, 'IMO': None})
 
-                    if rs and len(rs) > 0:
-                        print(rs)  # need to reformat the print statement to be something more usefull
+                    positions = []
+                    for position in pos:
+                        temp_pos = {'lat': float(position[1]), 'long': float(position[2])}
+                        positions.append(temp_pos)
+
+                    cursor.execute(
+                        """SELECT AISIMO FROM STATIC_DATA, AIS_MESSAGE WHERE AISMessage_Id = Id AND MMSI = %s ORDER BY Timestamp ASC;""",
+                        (mmsi,))
+                    rows = cursor.fetchall()
+                    imo = None
+                    if cursor.rowcount > 0:
+                        for row in rows:
+                            if row[0] is not None:
+                                imo = row[0]
+
+                    return json.dumps({"MMSI": mmsi, "Positions": positions, 'IMO': imo})
+
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+                print("Something is wrong with your user name or password")
+            elif err.errno == errorcode.ER_BAD_DB_ERROR:
+                print("Database does not exist")
+            else:
+                print(err)
+
+    def recent_ships_positions_headed_to_given_portId(self, port_id):
+        if self.is_stub:
+            return json.dumps({"vessels": []})
+        try:
+            with MySQLConnectionManager() as con:
+                with MySQLCursorManager(con) as cursor:
+                    cursor.execute("""SELECT t.MMSI, pos.Latitude, pos.Longitude
+                                      FROM (SELECT Id, MMSI, MAX(Timestamp) as LatestTime FROM AIS_MESSAGE WHERE Vessel_IMO IS NULL GROUP BY MMSI) t, POSITION_REPORT as pos, STATIC_DATA as sd
+                                      WHERE t.Id = pos.AISMessage_Id AND pos.LastStaticData_Id = sd.AISMessage_Id AND sd.DestinationPort_Id = %s ORDER BY t.LatestTime DESC;""",
+                                   (port_id,))
+                    rows = cursor.fetchall()
+                    vessels = []
+                    if cursor.rowcount > 0:
+                        for row in rows:
+                            vessel = self.create_vessel_document(row)
+                            del vessel['Name']
+                            vessels.append(vessel)
+                    else:
+                        json.dumps({"vessels": []})
+
+                    return json.dumps({"vessels": vessels})
+
+        # return array of position documents
+
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+                print("Something is wrong with your user name or password")
+            elif err.errno == errorcode.ER_BAD_DB_ERROR:
+                print("Database does not exist")
+            else:
+                print(err)
+
+    def create_port_document(self, port):
+        if len(port) < 8:
+            return {
+                "Id": None,
+                "Name": None,
+                "Country": None,
+                "lat": None,
+                "long": None,
+                "MapView1_Id": None,
+                "MapView2_Id": None,
+                "MapView3_Id": None
+            }
+        return {
+            "Id": port[0],
+            "Name": port[1],
+            "Country": port[2],
+            "lat": float(port[3]),
+            "long": float(port[4]),
+            "MapView1_Id": port[5],
+            "MapView2_Id": port[6],
+            "MapView3_Id": port[7]
+        }
+
+    def recent_ships_positions_headed_to_given_port(self, port_name, country):
+        if self.is_stub:
+            return json.dumps({"ports": []})
+        try:
+            with MySQLConnectionManager() as con:
+                with MySQLCursorManager(con) as cursor:
+                    cursor.execute("""SELECT PORT.Id FROM PORT WHERE PORT.Name = %s AND PORT.Country = %s;""",
+                                   (port_name, country))
+                    id = cursor.fetchall()
+                    if cursor.rowcount == 0:
+                        return json.dumps({"ports": []})
+                    elif cursor.rowcount > 1:
+                        return self.read_all_matching_ports(port_name, country)
+                    else:
+                        cursor.execute(
+                            """SELECT t.MMSI, pos.Latitude, pos.Longitude FROM (SELECT Id, MMSI, MAX(Timestamp) as 
+                            LatestTime from AIS_MESSAGE WHERE Vessel_IMO IS NULL GROUP BY MMSI) t, POSITION_REPORT as 
+                            pos, PORT as port, STATIC_DATA as sd WHERE t.Id = pos.AISMessage_Id AND pos.LastStaticData_Id 
+                            = sd.AISMessage_Id AND sd.DestinationPort_Id = port.Id AND port.Name = %s AND 
+                            port.Country = %s ORDER BY t.LatestTime DESC;""",
+                            (port_name, country))
+                        rows = cursor.fetchall()
+                        vessels = []
+                        if cursor.rowcount > 0:
+                            for row in rows:
+                                vessel = self.create_vessel_document(row)
+                                vessels.append(vessel)
+                            return json.dumps({"vessels": vessels})
+                        else:
+                            return json.dumps({"vessels": []})
 
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
@@ -442,30 +631,25 @@ class MySQL_DAO:
         return {'south': s, 'north': n, 'west': w, 'east': e}
 
     def select_all_recent_in_tile(self, tile_id):
+        if self.is_stub:
+            return json.dumps({"vessel": []})
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:
                     cursor.execute("""SELECT Scale
                                       FROM MAP_VIEW
-                                      WHERE MAP_VIEW.Id = %s""", tile_id)
+                                      WHERE MAP_VIEW.Id = %s""", (tile_id,))
+                    if cursor.rowcount == 0:
+                        return json.dumps({"vessel": []})
                     rs = cursor.fetchone()[0]
-
-                    if rs == 1:
-                        cursor.execute("""SELECT t.MMSI, pos.Latitude, pos.Longitude, t.Vessel_IMO
-                                FROM (SELECT Id, MMSI, Vessel_IMO, max(Timestamp) from AIS_MESSAGE) t, POSITION_REPORT as pos, MAP_VIEW as mv
-                                WHERE mv.id = pos.MapView1_Id AND t.Id = pos.AISMessage_Id;""")
-                    elif rs == 2:
-                        cursor.execute("""SELECT t.MMSI, pos.Latitude, pos.Longitude, t.Vessel_IMO
-                                FROM (SELECT Id, MMSI, Vessel_IMO, max(Timestamp) from AIS_MESSAGE) t, POSITION_REPORT as pos, MAP_VIEW as mv
-                                WHERE mv.id = pos.MapView2_Id AND t.Id = pos.AISMessage_Id;""")
-                    else:
-                        cursor.execute("""SELECT t.MMSI, pos.Latitude, pos.Longitude, t.Vessel_IMO
-                                FROM (SELECT Id, MMSI, Vessel_IMO, max(Timestamp) from AIS_MESSAGE) t, POSITION_REPORT as pos, MAP_VIEW as mv
-                                WHERE mv.id = pos.MapView3_Id AND t.Id = pos.AISMessage_Id;""")
-
+                    statement = """SELECT t.MMSI, pos.Latitude, pos.Longitude, t.Vessel_IMO
+                                                    FROM (SELECT Id, MMSI, Vessel_IMO, max(Timestamp) max from AIS_MESSAGE WHERE Vessel_IMO IS NULL GROUP BY MMSI) t, POSITION_REPORT as pos
+                                                    WHERE pos.MapView""" + str(
+                        rs) + """_Id = %s AND t.Id = pos.AISMessage_Id;"""
+                    cursor.execute(statement, (tile_id,))
                     rows = cursor.fetchall()
                     vessel = []
-                    if len(rows) > 0:
+                    if cursor.rowcount > 0:
                         for row in rows:
                             v = self.create_vessel_document(row)
                             vessel.append(v)
@@ -480,19 +664,20 @@ class MySQL_DAO:
             else:
                 print(err)
 
-    def __read_all_matching_ports__(self, port_name, optional_country=None):
+    def read_all_matching_ports(self, port_name, country=None):
+        if self.is_stub:
+            return json.dumps({"ports": []})
         try:
             with MySQLConnectionManager() as con:
                 with MySQLCursorManager(con) as cursor:
-                    # Most recent 5 ship positions
-                    if optional_country == None:
+                    if country is None:
                         cursor.execute("""SELECT Id, Name, Country, Longitude, Latitude, MapView1_Id, MapView2_Id, MapView3_Id
                                               FROM PORT
-                                              WHERE PORT.Name = %s""", port_name)
+                                              WHERE PORT.Name = %s""", (port_name,))
                     else:
                         cursor.execute("""SELECT Id, Name, Country, Longitude, Latitude, MapView1_Id, MapView2_Id, MapView3_Id
                                           FROM PORT
-                                          WHERE PORT.Name = %s AND PORT.Country = %s""", port_name, optional_country)
+                                          WHERE PORT.Name = %s AND PORT.Country = %s""", (port_name, country))
                     rows = cursor.fetchall()
                     ports = []
                     if len(rows) > 0:
@@ -501,6 +686,50 @@ class MySQL_DAO:
                             ports.append(port)
 
                     return json.dumps({"ports": ports})
+
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+                print("Something is wrong with your user name or password")
+            elif err.errno == errorcode.ER_BAD_DB_ERROR:
+                print("Database does not exist")
+            else:
+                print(err)
+
+    def read_ship_pos_in_ts3_given_port(self, port_name, country):
+        if self.is_stub:
+            return json.dumps({"ports": [{
+                "Id": None,
+                "Name": None,
+                "Country": None,
+                "lat": None,
+                "long": None,
+                "MapView1_Id": None,
+                "MapView2_Id": None,
+                "MapView3_Id": None
+            }]})
+        try:
+            with MySQLConnectionManager() as con:
+                with MySQLCursorManager(con) as cursor:
+                    cursor.execute("""SELECT MAP_VIEW.id
+                                      FROM MAP_VIEW, PORT
+                                      WHERE PORT.MapView3_Id = MAP_VIEW.Id AND PORT.Name = %s AND PORT.Country = %s;""",
+                                   (port_name, country))
+                    id = cursor.fetchall()
+                    if cursor.rowcount == 0:
+                        return json.dumps({"ports": [{
+                            "Id": None,
+                            "Name": None,
+                            "Country": None,
+                            "lat": None,
+                            "long": None,
+                            "MapView1_Id": None,
+                            "MapView2_Id": None,
+                            "MapView3_Id": None
+                        }]})
+                    elif cursor.rowcount > 1:
+                        return self.read_all_matching_ports(port_name, country)
+                    else:
+                        return self.select_all_recent_in_tile(id[0][0])
 
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
