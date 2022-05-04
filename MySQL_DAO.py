@@ -451,8 +451,8 @@ class MySQL_DAO:
         Select all recent ship positions for each vessel MMSI
 
         :raises [BaseException]: If the connection fails
-        :return: A list of ship documents formed from create_vessel_document()
-        :rtype: list
+        :return: A JSON list of ship documents formed from create_vessel_document(), {'vessels': [...]}
+        :rtype: str
         """
         if self.is_stub:
             return json.dumps({"vessels": [{
@@ -493,8 +493,8 @@ class MySQL_DAO:
         :param mmsi: The vessel MMSI
         :type mmsi: int
         :raises [BaseException]: If the connection fails
-        :return: A position document of the form {'MMSI': ..., 'lat': ..., 'long': ..., 'IMO': ...}
-        :rtype: dict
+        :return: A JSON position document of the form {'MMSI': ..., 'lat': ..., 'long': ..., 'IMO': ...}
+        :rtype: str
         """
         if self.is_stub:
             return json.dumps({"MMSI": None, "lat": None, "long": None, "IMO": None})
@@ -536,8 +536,8 @@ class MySQL_DAO:
         :param name: Optional, A dictionary of values to insert
         :type name: str
         :raises [BaseException]: If the connection fails
-        :return: A vessel document formed with create_vessel_document()
-        :rtype: dict
+        :return: A JSON vessel document formed with create_vessel_document()
+        :rtype: str
         """
         if self.is_stub:
             return json.dumps({"MMSI": None, "lat": None, "long": None, "IMO": None, "Name": None})
@@ -627,7 +627,7 @@ class MySQL_DAO:
         :param mmsi: A vessel MMSI
         :type mmsi: int
         :raises [BaseException]: If the connection fails
-        :return: JSON string containing
+        :return: JSON string containing {'MMSI': ..., 'Positions': [{'lat': ..., 'long': ...}, ... ], 'IMO': ... }
         :rtype: str
         """
         if self.is_stub:
@@ -668,6 +668,16 @@ class MySQL_DAO:
                 print(err)
 
     def recent_ships_positions_headed_to_given_portId(self, port_id):
+        """
+        Query 11, Priority 4
+        From a port id, find all most recent ship positions of the vessels heading to that port
+
+        :param port_id: The id of a port
+        :type port_id: dict
+        :raises [BaseException]: If the connection fails
+        :return: JSON string containing {'vessels': [{'MMSI': ..., 'lat': ..., 'long': ..., 'IMO': ...}, ...]}
+        :rtype: str
+        """
         if self.is_stub:
             return json.dumps({"vessels": []})
         try:
@@ -700,6 +710,15 @@ class MySQL_DAO:
                 print(err)
 
     def create_port_document(self, port):
+        """
+        Query 2, Priority 2
+        From a dictionary filled with message values, insert the values into the database and return a success message.
+
+        :param port: A dictionary of port values to put into the document
+        :type port: dict
+        :return: A dictionary containing the port's Id, Name, Country, Latitude, Longitude, and all three tile ids
+        :rtype: dict
+        """
         if len(port) < 8:
             return {
                 "Id": None,
@@ -723,6 +742,21 @@ class MySQL_DAO:
         }
 
     def recent_ships_positions_headed_to_given_port(self, port_name, country):
+        """
+        Query 12, Priority 4
+        From given port information, return either a list of matching ports or, if there is a single matching port,
+        a list of vessel positions heading towards that port.
+
+        :param port_name: The name of the port
+        :type port_name: str
+        :param country: The name of the country the port is in
+        :type country: str
+        :raises [BaseException]: If the connection fails
+        :return: Either a JSON string containing {'vessels': [{'MMSI': ..., 'lat': ..., 'long': ..., 'IMO': ...}, ...]}
+            or a an array of objects containing the port's Id, Name, Country, Latitude, Longitude, and all three tile
+            ids
+        :rtype: str
+        """
         if self.is_stub:
             return json.dumps({"ports": []})
         try:
@@ -787,6 +821,16 @@ class MySQL_DAO:
         return {'south': s, 'north': n, 'west': w, 'east': e}
 
     def select_all_recent_in_tile(self, tile_id):
+        """
+        Query 7, Priority 2
+        From a tile id, find all most recent ship positions of the vessels in that tile
+
+        :param tile_id: The id of a tile
+        :type tile_id: int
+        :raises [BaseException]: If the connection fails
+        :return: JSON string containing {'vessels': [{'MMSI': ..., 'lat': ..., 'long': ..., 'IMO': ...}, ...]}
+        :rtype: str
+        """
         if self.is_stub:
             return json.dumps({"vessel": []})
         try:
@@ -821,6 +865,19 @@ class MySQL_DAO:
                 print(err)
 
     def read_all_matching_ports(self, port_name, country=None):
+        """
+        Query 8, Priority 2
+        Matches a port based on a port name or optional country, returning the port document
+
+        :param port_name: The name of a port
+        :type port_name: str
+        :param country: Optional, the country a port is in
+        :type port_name: str
+        :raises [BaseException]: If the connection fails
+        :return: JSON encoded port document containing the port's Id, Name, Country, Latitude, Longitude, and
+            all three tile ids
+        :rtype: str
+        """
         if self.is_stub:
             return json.dumps({"ports": []})
         try:
@@ -852,6 +909,21 @@ class MySQL_DAO:
                 print(err)
 
     def read_ship_pos_in_ts3_given_port(self, port_name, country):
+        """
+        Query 9, Priority 2
+        Based on a port's name and country, finds the ship positions in the scale 3 tile that the port is in.
+        If no unique port is found, list all port documents with those parameters.
+
+        :param port_name: The name of a port
+        :type port_name: str
+        :param country: Optional, the country a port is in
+        :type port_name: str
+        :raises [BaseException]: If the connection fails
+        :return: Either a JSON string containing {'vessels': [{'MMSI': ..., 'lat': ..., 'long': ..., 'IMO': ...}, ...]}
+            or a an array of objects containing the port's Id, Name, Country, Latitude, Longitude, and all three tile
+            ids
+        :rtype: str
+        """
         if self.is_stub:
             return json.dumps({"ports": [{
                 "Id": None,
@@ -896,6 +968,14 @@ class MySQL_DAO:
                 print(err)
 
     def create_tile_document(self, tile):
+        """
+        Based on a list of tile values, create a dictionary of said tile values with their keys
+
+        :param tile: The list of tile values
+        :type tile: list
+        :return: A dictionary containing all keys for a tile and the values of the specific tile passed in
+        :rtype: dict
+        """
         if len(tile) < 15:
             return {
                 "Id": None,
@@ -933,6 +1013,20 @@ class MySQL_DAO:
         }
 
     def given_tile_find_contained_tiles(self, map_tile_id):
+        """
+        Query 13, Priority 4
+        Return the four map tile documents of the tiles contained within the tile whose Id is passed in
+
+        :param port_name: The name of a port
+        :type port_name: str
+        :param country: Optional, the country a port is in
+        :type port_name: str
+        :raises [BaseException]: If the connection fails
+        :return: Either a JSON string containing {'vessels': [{'MMSI': ..., 'lat': ..., 'long': ..., 'IMO': ...}, ...]}
+            or a an array of objects containing the port's Id, Name, Country, Latitude, Longitude, and all three tile
+            ids
+        :rtype: str
+        """
         if self.is_stub:
             return json.dumps({"tiles": []})
         try:
