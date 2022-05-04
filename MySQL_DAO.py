@@ -316,7 +316,7 @@ class MySQL_DAO:
         Retrieves the permanent data's IMO for a ship with a given MMSI
 
         :param mmsi: The vessel MMSI
-        :type msg: int
+        :type mmsi: int
         :raises [BaseException]: If the connection fails
         :return: The IMO
         :rtype: int
@@ -346,7 +346,7 @@ class MySQL_DAO:
         Returns the Name of a vessel found in the permanent data based on a given MMSI
 
         :param mmsi: The Vessel MMSI
-        :type msg: int
+        :type mmsi: int
         :raises [BaseException]: If the connection fails
         :return: The vessel name
         :rtype: str
@@ -872,7 +872,7 @@ class MySQL_DAO:
         :param port_name: The name of a port
         :type port_name: str
         :param country: Optional, the country a port is in
-        :type port_name: str
+        :type country: str
         :raises [BaseException]: If the connection fails
         :return: JSON encoded port document containing the port's Id, Name, Country, Latitude, Longitude, and
             all three tile ids
@@ -917,7 +917,7 @@ class MySQL_DAO:
         :param port_name: The name of a port
         :type port_name: str
         :param country: Optional, the country a port is in
-        :type port_name: str
+        :type country: str
         :raises [BaseException]: If the connection fails
         :return: Either a JSON string containing {'vessels': [{'MMSI': ..., 'lat': ..., 'long': ..., 'IMO': ...}, ...]}
             or a an array of objects containing the port's Id, Name, Country, Latitude, Longitude, and all three tile
@@ -1017,10 +1017,8 @@ class MySQL_DAO:
         Query 13, Priority 4
         Return the four map tile documents of the tiles contained within the tile whose Id is passed in
 
-        :param port_name: The name of a port
-        :type port_name: str
-        :param country: Optional, the country a port is in
-        :type port_name: str
+        :param map_tile_id: The Id of a map tile
+        :type map_tile_id: str
         :raises [BaseException]: If the connection fails
         :return: Either a JSON string containing {'vessels': [{'MMSI': ..., 'lat': ..., 'long': ..., 'IMO': ...}, ...]}
             or a an array of objects containing the port's Id, Name, Country, Latitude, Longitude, and all three tile
@@ -1052,6 +1050,18 @@ class MySQL_DAO:
                 print(err)
 
     def given_tile_id_get_tile(self, map_tile_id):
+        """
+        Query 14, Priority 4
+        Return the actual tile (a PNG file), the binary data.
+
+        :param map_tile_id: The Id of a map tile
+        :type map_tile_id: str
+        :raises [BaseException]: If the connection fails
+        :return: Either a JSON string containing {'vessels': [{'MMSI': ..., 'lat': ..., 'long': ..., 'IMO': ...}, ...]}
+            or a an array of objects containing the port's Id, Name, Country, Latitude, Longitude, and all three tile
+            ids
+        :rtype: str
+        """
         if self.is_stub:
             return map_tile_id
         try:
